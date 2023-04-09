@@ -1,0 +1,57 @@
+output_path: results/glyco/baseline
+HP: True
+model:
+  class_path: src.models.GlycoModel
+  init_args:
+    num_classes: 2
+    lr: 1e-3
+    num_layers: 2
+    input_dim: 2304
+    num_hidden: [84]
+
+
+data:
+  class_path: src.data.lightning_glyco.GlycoDataModule
+  init_args:
+    config:
+      classes: {"T": 0, "N": 1}
+      data_dir: data/glyco
+      embedding_path: data/glyco/glyco_embeddings.h5
+      esm_embedding_path: data/glyco/glyco_esm_embeddings.h5
+      np_path: data/glyco/N/np
+      num_workers: 8
+      batch_size: 128
+      add_esm: True
+      add_vespag: False
+      neg_sample_ratio: 1.0
+      pos_sample_ratio: 1.5
+      add_neg_op_sites: False
+      
+      
+  
+      
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  max_epochs: 50
+  num_sanity_val_steps: 2
+  callbacks:
+    - class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+    - class_path: EarlyStopping
+      init_args:
+        monitor: val_loss
+        mode: min
+        min_delta: 0.001 #DEBUG 9999
+        patience: 5 #DEBUG 1
+    - class_path: LearningRateMonitor
+      init_args:
+        logging_interval: step
+    - class_path: src.callbacks.LogPredictionCallback
+      init_args:
+        out_path: results/glyco/baseline

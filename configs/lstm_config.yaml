@@ -1,0 +1,42 @@
+output_path: /mnt/project/hasler/protein_properties/results/sasa/lstm
+HP: False
+model:
+  class_path: src.models.SASALSTM
+  init_args:
+    lr: 1e-3
+    num_classes: 2
+    hidden: 30
+
+
+data:
+  class_path: src.data.lightning_sasa.SASADataModule
+  init_args:
+    config:
+      data_dir: /mnt/project/hasler/protein_properties/data/sasa
+      embedding_path: /mnt/project/hasler/protein_properties/data/sasa/sasaembeddings.h5
+      np_path: /mnt/project/hasler/protein_properties/data/sasa/
+      num_workers: 8
+      
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  accumulate_grad_batches: 64
+  max_epochs: 50
+  num_sanity_val_steps: 2
+  callbacks:
+    - class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+    - class_path: EarlyStopping
+      init_args:
+        monitor: val_loss
+        mode: min
+        min_delta: 0.001 #DEBUG 9999
+        patience: 5 #DEBUG 1
+    - class_path: src.callbacks.LogPredictionCallback
+      init_args:
+        out_path: /mnt/project/hasler/protein_properties/results/sasa/lstm
