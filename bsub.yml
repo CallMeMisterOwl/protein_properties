@@ -1,0 +1,22 @@
+# For more options, check out:
+# https://www.ibm.com/support/knowledgecenter/en/SSWRJV_10.1.0/lsf_command_ref/bsub.yaml.1.html
+io:
+    outputOverwriteFile: /mnt/project/hasler/protein_properties/stdout.log
+    errorOverwriteFile: /mnt/project/hasler/protein_properties/stderr.log
+limit:
+    coreLimit: 18
+    runtimeLimit: 24:00
+    memLimit: 15G!
+#resource:
+#    gpu: num=1/task:mode=shared:gmem=8G:j_exclusive=no:gpack=yes
+
+## Uncommment the following to schedule a job to start at a specific time (YYYY:MM:DD:HH:M)
+#schedule:
+#    specifiedStartTime: 20:00
+
+
+properties:
+    queueName: mid-end-normal
+    jobName: complicated_calulation
+
+command: poetry run python /mnt/project/hasler/protein_properties/complicated_calculation.py
