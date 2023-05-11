@@ -24,9 +24,9 @@ def calculate_scores_for_protein(protein: str, pdb_path: str) -> tuple:
     return protein, sasa_scores, bfactor_scores
 
 
-def calculate_scores(fasta_file: Fasta, pdb_path: str) -> tuple[dict, dict]:
+def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int) -> tuple[dict, dict]:
     proteins = fasta_file.get_headers()
-    with mp.Pool(1) as pool:
+    with mp.Pool(nprocesses) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, args=(protein, pdb_path)) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: sasa_scores for protein, sasa_scores, _ in results}
@@ -42,6 +42,7 @@ def main(args: Optional[list] = None):
     parser.add_argument('-s', '--split_paths', nargs='+', help='Path(s) to split files')
     parser.add_argument('-p', '--pdb_path', required=True, help='Path to PDB structures')
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
+    parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use')
 
     # Parse arguments
     if args is None:
@@ -52,7 +53,7 @@ def main(args: Optional[list] = None):
     output_path = args.output_path
     for fasta_path in split_paths:
         fasta = Fasta(fasta_path)
-        sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path)
+        sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes)
         copy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta')
         fasta.append(sasa_scores).write_fasta(f'{output_path}/sasa/{Path(fasta_path).stem}_sasa.fasta')
 
