@@ -1,6 +1,5 @@
 from pathlib import Path
-from typing import Optional
-
+from typing import Optional, Union
 
 
 class Fasta:
@@ -14,8 +13,9 @@ class Fasta:
         Dictionary with the sequences. The keys are the headers and the values are the sequences.
 
     """
+
     def __init__(self, path: Optional[str] = None, sequences: Optional[dict] = None):
-        self._sequences = {}
+        self._sequences = {} if sequences is None else sequences
         if path is not None:
             self.read_fasta(path)
 
@@ -57,7 +57,7 @@ class Fasta:
         :return: None
         """
         path = Path(path)
-        if path.exists():
+        if path.exists() and not overwrite:
             raise FileExistsError(f'File {path} already exists')
         path.parents[0].mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
@@ -104,52 +104,51 @@ class Fasta:
         """
         return len(list(self._sequences.values())[0])
 
-    def get_sequence_length(self, header: str) -> Optional[list]:
-        """
-        Returns the length of the sequence of a given header.
-        :param header: str
-        :return: Optional[int]
-        """
-        if header in self._sequences:
-            return [len(seq) for seq in self._sequences[header]]
-        else:
-            return None
+    # combine the function names to get_sequence_lengths into one function
 
-    def get_sequence_lengths(self, headers: list) -> Optional[list]:
+    def get_sequence_lengths(self, headers: Union[str, list]) -> Optional[dict]:
         """
-        Returns the lengths of the sequences of a given list of headers.
-        :param headers: list
-        :return: Optional[list]
+        Returns the lengths of the sequences of a given list of headers. If the header is not in the dictionary, None is returned.
+        :param headers: Union[str, list]
+        :return: Optional[dict]
         """
-        lengths = []
+        if isinstance(headers, str):
+            headers = [headers]
+
+        lengths = {}
         for header in headers:
             if header in self._sequences:
-                lengths += [len(seq) for seq in self._sequences[header]]
+                lengths[header] = [len(i) for i in self._sequences[header]]
             else:
-                lengths += [None]
+                raise KeyError(f'Header {header} not in dictionary')
         return lengths
 
-    def get_sequence_lengths(self) -> list:
+    def get_sequence_all_lengths(self) -> dict:
         """
         Returns the lengths of the sequences.
         :return:
         """
-        return [len(seq) for sequence in self._sequences.values() for seq in sequence]
+        return {header: [len(i) for i in sequence] for header, sequence in self._sequences.items()}
 
-    def append(self, other):
+    def append(self, other: Union['Fasta', dict]):
         """
         Appends the sequences of another Fasta object or a dictionary to the current Fasta object.
         Note the function expects the values to be lists.
         :param other:
         :return:
         """
-        if isinstance(other, Fasta) or isinstance(other, dict):
-            if isinstance(other, dict):
-                for key, value in other.items():
-                    if isinstance(value, list):
-                        self._sequences.setdefault(key, []).extend(value)
-                    else:
-                        self._sequences.setdefault(key, []).append(value)
+        if isinstance(other, Fasta):
+            for key, value in other._sequences.items():
+                if isinstance(value, list):
+                    self._sequences.setdefault(key, []).extend(value)
+                elif isinstance(value, str):
+                    self._sequences.setdefault(key, []).append(value)
+        elif isinstance(other, dict):
+            for key, value in other.items():
+                if isinstance(value, list):
+                    self._sequences.setdefault(key, []).extend(value)
+                elif isinstance(value, str):
+                    self._sequences.setdefault(key, []).append(value)
 
     def __copy__(self):
         return Fasta(sequences=self._sequences)
@@ -190,6 +189,3 @@ class Fasta:
 
     def __radd__(self, other):
         return self + other
-
-
-

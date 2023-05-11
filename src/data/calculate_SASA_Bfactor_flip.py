@@ -1,5 +1,6 @@
 from copy import copy
 from pathlib import Path
+from typing import Optional
 
 import numpy
 from tqdm import tqdm
@@ -12,7 +13,11 @@ import multiprocessing as mp
 
 def calculate_scores_for_protein(protein: str, pdb_path: str) -> tuple:
     cif_header: str = protein.split('-')[0]
-    pdbx = PDBxFile.read(f'{pdb_path}/{cif_header}.cif')
+    try:
+        pdbx = PDBxFile.read(f'{pdb_path}/{cif_header}.cif')
+    except FileNotFoundError:
+        raise FileNotFoundError(f'Could not find PDB structure for {protein}')
+
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
     sasa_scores = sasa(struct).tolist()
     bfactor_scores = struct.get_annotation("b_factor").tolist()
@@ -21,7 +26,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str) -> tuple:
 
 def calculate_scores(fasta_file: Fasta, pdb_path: str) -> tuple[dict, dict]:
     proteins = fasta_file.get_headers()
-    with mp.Pool(32) as pool:
+    with mp.Pool(1) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, args=(protein, pdb_path)) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: sasa_scores for protein, sasa_scores, _ in results}
@@ -30,7 +35,7 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str) -> tuple[dict, dict]:
 
 
 
-def main():
+def main(args: Optional[list] = None):
     # Initialize ArgumentParser
     parser = argparse.ArgumentParser()
 
@@ -39,7 +44,8 @@ def main():
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
 
     # Parse arguments
-    args = parser.parse_args()
+    if args is None:
+        args = parser.parse_args()
     # Access arguments
     split_paths = args.split_paths
     pdb_path = args.pdb_path
