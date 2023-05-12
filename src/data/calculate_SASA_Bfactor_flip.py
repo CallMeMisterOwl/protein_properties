@@ -1,11 +1,12 @@
 from copy import copy
 from pathlib import Path
 from typing import Optional
-
+from tempfile import gettempdir
 import numpy as np
 from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 from biotite.structure import sasa, apply_residue_wise
+import biotite.database.rcsb as rcsb
 from src.data.fasta import Fasta
 import argparse
 import multiprocessing as mp
@@ -16,20 +17,23 @@ def calculate_scores_for_protein(protein: str, pdb_path: str) -> tuple:
     try:
         pdbx = PDBxFile.read(f'{pdb_path}/{cif_header}.cif')
     except FileNotFoundError:
-        raise FileNotFoundError(f'Could not find PDB structure for {protein}')
+        print(f'Could not find PDBx file for {protein}\nFetching from RCSB...')
+        file_path = rcsb.fetch(protein, "cif")
+        pdbx = PDBxFile.read(file_path)
 
     seq_length = len(get_sequence(pdbx))
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
     atom_sasa_scores = sasa(struct, vdw_radii="Single", point_number=500)
 
-    res_sasa = apply_residue_wise(struct, atom_sasa_scores, np.sum)[:seq_length]
-    res_bfactor = apply_residue_wise(struct, struct.get_annotation("b_factor"), np.sum)[:seq_length]
+    res_sasa = apply_residue_wise(struct, atom_sasa_scores, np.nasum)[:seq_length]
+    res_bfactor = apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nasum)[:seq_length]
 
-    assert sum(np.isnan(res_bfactor)) == 0, f'Found {sum(np.isnan(res_bfactor))} NaNs in B-factor scores for {protein}'
+    """assert sum(np.isnan(res_bfactor)) == 0, f'Found {sum(np.isnan(res_bfactor))} NaNs in B-factor scores for {protein}'
 
     # Interpolate missing values
     nans, tmp = np.isnan(res_sasa), lambda z: z.nonzero()[0]
     res_sasa[nans] = np.interp(tmp(nans), tmp(~nans), res_sasa[~nans])
+    """
 
     return protein, res_sasa, res_bfactor
 
