@@ -53,7 +53,7 @@ def main():
                 struct_chain = struct[
                                chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
             num_res = struc.get_residue_count(struct_chain)
-            struct_chain = struct_chain[struc.filter_amino_acids(struct_chain)]
+            struct_chain = struct_chain[struc.filter_canonical_amino_acids(struct_chain)]
             if num_res == fasta.get_sequence_lengths(header):
                 break
             seq_chain_a = []
