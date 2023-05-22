@@ -14,6 +14,7 @@ import sys
 from os import path
 from pathlib import Path
 
+from biotite.database import rcsb
 from biotite.structure.io.pdbx import PDBxFile
 import biotite.structure as struc
 from fasta import Fasta
@@ -42,7 +43,12 @@ def main():
     for fasta in fasta_files:
         fasta = Fasta(fasta)
         for header in fasta.get_headers():
-            pdbx = PDBxFile.read(Path(pdb_path) / (header.split('-')[0] + ".cif"))
+            try:
+                pdbx = PDBxFile.read(Path(pdb_path) / (header.split('-')[0] + ".cif"))
+            except FileNotFoundError:
+                print(f'Could not find PDBx file for {header.split("-")[0]}\nFetching from RCSB...')
+                file_path = rcsb.fetch(header.split('-')[0], "cif")
+                pdbx = PDBxFile.read(file_path)
             struct = struc.io.pdbx.get_structure(pdbx, extra_fields=["b_factor"], model=1)
             chain_starts = struc.get_chain_starts(struct).tolist()
             chain_ids = struc.get_chains(struct).tolist()
