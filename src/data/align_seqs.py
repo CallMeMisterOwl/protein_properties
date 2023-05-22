@@ -14,7 +14,7 @@ from pathlib import Path
 
 from biotite.structure.io.pdbx import PDBxFile
 import biotite.structure as struc
-from src.data.fasta import Fasta
+from fasta import Fasta
 from biotite.sequence import ProteinSequence
 from src.utils import align_sequences_nw
 
