@@ -67,7 +67,15 @@ def main():
                 seq_chain_a.append(res[0].res_name)
             seq_chain_a_single = []
             for aa in seq_chain_a:
-                seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
+                try:
+                    seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
+                except KeyError:
+                    if aa == 'PYL':
+                        seq_chain_a_single.append('O')
+                    elif aa == 'SEC':
+                        seq_chain_a_single.append('U')
+                    else:
+                        seq_chain_a_single.append('X')
             fasta[header] = utils.align_sequences_nw("".join(seq_chain_a_single), fasta.get_sequence(header)[0])
         final_fasta.append(fasta)
 
