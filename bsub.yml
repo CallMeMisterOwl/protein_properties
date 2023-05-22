@@ -19,4 +19,4 @@ properties:
     queueName: mid-end-normal
     jobName: complicated_calulation
 
-command: poetry run python /mnt/project/hasler/protein_properties/complicated_calculation.py
+command: poetry run python /mnt/project/hasler/protein_properties/complicated_calculation.py -o /mnt/home/hasler/project/protein_properties/data -
