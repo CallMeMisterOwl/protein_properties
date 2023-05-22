@@ -10,13 +10,17 @@ Finally return a fasta file that contains only sequences that have a sequence id
 """
 
 import argparse
+import sys
+from os import path
 from pathlib import Path
 
 from biotite.structure.io.pdbx import PDBxFile
 import biotite.structure as struc
-from .fasta import Fasta
+from fasta import Fasta
 from biotite.sequence import ProteinSequence
-from .. import utils
+
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+from src.utils import align_sequences_nw
 
 
 def main():
@@ -57,7 +61,7 @@ def main():
             seq_chain_a_single = []
             for aa in seq_chain_a:
                 seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
-            fasta[header] = utils.align_sequences_nw("".join(seq_chain_a_single), fasta.get_sequence(header)[0])
+            fasta[header] = align_sequences_nw("".join(seq_chain_a_single), fasta.get_sequence(header)[0])
         final_fasta.append(fasta)
 
     final_fasta.write_fasta(str(Path(output_path) / "aligned.fasta"), overwrite=True)
