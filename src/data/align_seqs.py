@@ -19,8 +19,9 @@ import biotite.structure as struc
 from fasta import Fasta
 from biotite.sequence import ProteinSequence
 
+# Ugly but necessary to import utils
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from src.utils import align_sequences_nw
+import utils
 
 
 def main():
@@ -61,7 +62,7 @@ def main():
             seq_chain_a_single = []
             for aa in seq_chain_a:
                 seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
-            fasta[header] = align_sequences_nw("".join(seq_chain_a_single), fasta.get_sequence(header)[0])
+            fasta[header] = utils.align_sequences_nw("".join(seq_chain_a_single), fasta.get_sequence(header)[0])
         final_fasta.append(fasta)
 
     final_fasta.write_fasta(str(Path(output_path) / "aligned.fasta"), overwrite=True)
