@@ -47,7 +47,7 @@ def main():
             chain_starts = struc.get_chain_starts(struct).tolist()
             chain_ids = struc.get_chains(struct).tolist()
             chain_id = header.split('-')[1]
-            if struc.get_chain_count(struct) == 1:
+            if struc.get_chain_count(struct) == 1 or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]:
                 struct_chain = struct[chain_starts[chain_ids.index(chain_id)]:]
             else:
                 struct_chain = struct[
