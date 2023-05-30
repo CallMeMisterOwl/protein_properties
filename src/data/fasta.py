@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Union
 
-
+# TODO implement functionality to recognize std fasta files and automatically concate the lines 
 class Fasta:
     """
     Class to read and write fasta files and store the sequences in a dictionary.
@@ -149,6 +149,7 @@ class Fasta:
                     self._sequences.setdefault(key, []).extend(value)
                 elif isinstance(value, str):
                     self._sequences.setdefault(key, []).append(value)
+        return self
 
     def __copy__(self):
         return Fasta(sequences=self._sequences)

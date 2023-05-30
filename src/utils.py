@@ -1,5 +1,24 @@
+import random
 import numpy as np
+from pytorch_lightning import seed_everything
+import torch  
 
+
+def seed_all(seed=13):
+    """
+    Seed function to guarantee the reproducibility of the code.
+
+    See https://discuss.pytorch.org/t/reproducibility-with-all-the-bells-and-whistles/81097
+    """
+    seed_everything(seed, workers=True)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    np.random.seed(seed)
+    random.seed(seed)
 
 # https://gist.github.com/slowkow/06c6dba9180d013dfd82bec217d22eb5
 def align_sequences_nw(x: str, y: str, match=2, mismatch=100, gap=1):
