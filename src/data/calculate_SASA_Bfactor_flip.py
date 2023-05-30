@@ -10,18 +10,18 @@ import biotite.database.rcsb as rcsb
 from src.data.fasta import Fasta
 import argparse
 import multiprocessing as mp
+import os
 
-
-def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list) -> tuple:
+def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str]) -> tuple:
     cif_header: str = protein.split('-')[0]
     try:
-        pdbx = PDBxFile.read(f'{pdb_path}/{cif_header}.cif')
+        pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
     except FileNotFoundError:
         print(f'Could not find PDBx file for {protein}\nFetching from RCSB...')
         file_path = rcsb.fetch(protein, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    seq_length = len(get_sequence(pdbx))
+    seq_length = len(get_sequence(pdbx)[0])
     chain_id = protein.split('-')[1]
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
@@ -33,8 +33,8 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     struct = struct[biostruc.filter_canonical_amino_acids(struct)]
     atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
 
-    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nasum)
-    res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nasum)
+    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
+    res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nansum)
 
     # clip so the mask can be recognized by the model
     # divide by 100 to get smaller values -> better for the model gradient 
@@ -60,7 +60,7 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     proteins = fasta_file.get_headers()
     with mp.Pool(nprocesses) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
-                                    args=(protein, pdb_path, mapping_fasta[":".join((protein + "-disorder").split("-"))])) for protein in proteins]
+                                    args=(protein, pdb_path, mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))])) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: sasa_scores for protein, sasa_scores, _ in results}
     bfactor_scores = {protein: bfactor_scores for protein, _, bfactor_scores in results}
