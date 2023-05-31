@@ -1,5 +1,6 @@
 from copy import copy
 from pathlib import Path
+import sys
 from typing import Optional
 from tempfile import gettempdir
 import numpy as np
@@ -46,8 +47,11 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
 
     res_sasa_masked = np.zeros(len(disorder_residues))
-    res_sasa_masked[non_disorder_indices] = res_sasa
-
+    try:
+        res_sasa_masked[non_disorder_indices] = res_sasa
+    except ValueError:
+        print(f'Length of primary sequence {protein} does not match length of SASA scores')
+        sys.exit(1)
     res_bfactor_masked = np.zeros(len(disorder_residues))
     res_bfactor_masked[non_disorder_indices] = res_bfactor
 
