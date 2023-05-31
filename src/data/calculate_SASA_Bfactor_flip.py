@@ -72,9 +72,9 @@ def main(args: Optional[list] = None):
     # Initialize ArgumentParser
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-s', '--fasta-files', nargs='+', help='Path(s) to fasta files')
+    parser.add_argument('-s', '--fasta_files', nargs='+', help='Path(s) to fasta files')
     parser.add_argument('-p', '--pdb_path', required=True, help='Path to PDB structures')
-    parser.add_argument("-m", "--mapping-file", required=True, help="Path to mapping file, which is required to fill in missing residues")
+    parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
     parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use')
 
@@ -83,12 +83,12 @@ def main(args: Optional[list] = None):
         args = parser.parse_args()
     # Access arguments
 
-    split_paths = args.split_paths
+    fasta_files = args.fasta_files
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
-    for fasta_path in split_paths:
+    for fasta_path in fasta_files:
         fasta = Fasta(fasta_path)
         sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta)
         copy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta')
