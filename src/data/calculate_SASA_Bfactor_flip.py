@@ -7,7 +7,7 @@ from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
-from fasta import Fasta
+from .fasta import Fasta
 import argparse
 import multiprocessing as mp
 import os
@@ -51,7 +51,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     res_bfactor_masked = np.zeros(len(disorder_residues))
     res_bfactor_masked[non_disorder_indices] = res_bfactor
 
-    assert len(res_sasa_masked) == seq_length, f'Length of primary sequence {protein} does not match length of SASA scores'
+    assert len(disorder_residues) == res_sasa_masked.shape[0], f'Length of primary sequence {protein} does not match length of SASA scores'
 
     return protein, res_sasa_masked, res_bfactor_masked
 
