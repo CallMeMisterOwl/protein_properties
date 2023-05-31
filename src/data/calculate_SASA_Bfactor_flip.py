@@ -8,7 +8,7 @@ from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
-from .fasta import Fasta
+from fasta import Fasta
 import argparse
 import multiprocessing as mp
 import os
