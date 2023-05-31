@@ -86,11 +86,13 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
             res_bfactor = res_bfactor[primary_seq_overlap]
+        
 
         res_bfactor_masked = np.zeros(len(disorder_residues))
         res_bfactor_masked[non_disorder_indices] = res_bfactor
 
-    return protein, res_sasa_masked, res_bfactor_masked
+        return protein, res_sasa_masked, res_bfactor_masked
+    return protein, res_sasa, res_bfactor
 
 
 def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
