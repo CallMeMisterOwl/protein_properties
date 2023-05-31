@@ -21,7 +21,7 @@ def seed_all(seed=13):
     random.seed(seed)
 
 # https://gist.github.com/slowkow/06c6dba9180d013dfd82bec217d22eb5
-def align_sequences_nw(x: str, y: str, match=2, mismatch=100, gap=1):
+def align_sequences_nw(x: str, y: str, match=100, mismatch=100, gap=1):
     nx = len(x)
     ny = len(y)
     # Optimal score at each possible pair of characters.

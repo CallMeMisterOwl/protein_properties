@@ -8,13 +8,32 @@ from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
+from biotite.sequence import ProteinSequence
 from fasta import Fasta
+from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+from utils import align_sequences_nw
 import argparse
 import multiprocessing as mp
 import os
 
 def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str]) -> tuple:
+    """
+    Calculates the SASA and B-factor scores for a given protein. 
+    The SASA and B-factor scores are calculated for each residue in the protein.
+    Parameters
+    ----------
+    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
+    pdb_path : str the path to the PDB files
+    map_missing_res : list[str] a list of the same length as the protein sequence, where each element is either '-' or 'X'.
+    Returns
+    -------
+    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
+    res_sasa_masked : np.array the SASA scores for each residue in the protein
+    res_bfactor_masked : np.array the B-factor scores for each residue in the protein
+    """
     cif_header: str = protein.split('-')[0]
+
     try:
         pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
     except FileNotFoundError:
@@ -24,7 +43,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
     seq = get_sequence(pdbx)[0]
     seq_wo_X = str(seq).replace('X', '')
-    seq_length = len(seq_wo_X)
+    seq_length = len(seq)
     chain_id = protein.split('-')[1]
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
@@ -47,27 +66,47 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     # mask the residues that are not in the PDB files, due to disorder
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
-
+    
     # this is not clean and could lead to errors
     if len(disorder_residues) != res_sasa.shape[0] or res_sasa.shape[0] != seq_length:
         res_sasa_masked = np.zeros(len(disorder_residues))
         try:
             res_sasa_masked[non_disorder_indices] = res_sasa
         except ValueError:
-            print(f'Length of primary sequence {protein} does not match length of SASA scores')
-            print(f'Length of primary sequence: {len(disorder_residues)}')
-            print(f'Length of SASA scores: {res_sasa.shape[0]}')
-            print(f'Length of sequence from PDB: {seq_length}')
-            sys.exit(1)
+            """
+            Essentially, this is a hack to deal with the fact that the PDB file contains more residues than in the primary sequence, 
+            even when only considering the residues that are not disordered.
+            So if this is the case, this piece of code aligns the primary sequence against the residue sequence in the PDB file.
+            This deals only with the case that the PDB sequence is longer than the primary sequence !!!
+            """
+            seq_chain_a_single = []
+            for aa in biostruc.get_residues(struct)[1]:
+                seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
+            alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
+            primary_seq_overlap = np.array(list(alignment[0])) != '-'
+            res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
+            res_bfactor = res_bfactor[primary_seq_overlap]
+
         res_bfactor_masked = np.zeros(len(disorder_residues))
         res_bfactor_masked[non_disorder_indices] = res_bfactor
-
-    assert len(disorder_residues) == res_sasa_masked.shape[0], f'Length of primary sequence {protein} does not match length of SASA scores'
 
     return protein, res_sasa_masked, res_bfactor_masked
 
 
 def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
+    """
+    Calculates the SASA and B-factor scores for every protein in the fasta file. 
+    The SASA and B-factor scores are calculated for each residue in the protein.
+    Parameters
+    ----------
+    fasta_file : Fasta the fasta file containing the protein sequences
+    pdb_path : str the path to the PDB files
+    nprocesses : int the number of processes to use for multiprocessing
+    Returns
+    -------
+    sasa_scores : dict the SASA scores for each residue in the protein
+    bfactor_scores : dict the B-factor scores for each residue in the protein
+    """
     proteins = fasta_file.get_headers()
     with mp.Pool(nprocesses) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
