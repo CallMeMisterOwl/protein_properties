@@ -9,7 +9,7 @@ from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
 from biotite.sequence import ProteinSequence
-from fasta import Fasta
+from src.data.fasta import Fasta
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from utils import align_sequences_nw
@@ -52,7 +52,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     else:
         struct = struct[chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
     
-    struct = struct[biostruc.filter_amino_acids(struct)]
+    struct = struct[biostruc.filter_canonical_amino_acids(struct)]
     atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
 
     res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
@@ -81,7 +81,15 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
             """
             seq_chain_a_single = []
             for aa in biostruc.get_residues(struct)[1]:
-                seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
+                try:
+                    seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
+                except KeyError:
+                    if aa == 'PYL':
+                        seq_chain_a_single.append('O')
+                    elif aa == 'SEC':
+                        seq_chain_a_single.append('U')
+                    else:
+                        seq_chain_a_single.append('X')
             alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
