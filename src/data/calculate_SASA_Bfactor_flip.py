@@ -8,7 +8,7 @@ from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
-from fasta import Fasta
+from .fasta import Fasta
 import argparse
 import multiprocessing as mp
 import os
@@ -22,7 +22,9 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    seq_length = len(get_sequence(pdbx)[0])
+    seq = get_sequence(pdbx)[0]
+    seq_wo_X = str(seq).replace('X', '')
+    seq_length = len(seq_wo_X)
     chain_id = protein.split('-')[1]
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
@@ -46,14 +48,19 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
 
-    res_sasa_masked = np.zeros(len(disorder_residues))
-    try:
-        res_sasa_masked[non_disorder_indices] = res_sasa
-    except ValueError:
-        print(f'Length of primary sequence {protein} does not match length of SASA scores')
-        sys.exit(1)
-    res_bfactor_masked = np.zeros(len(disorder_residues))
-    res_bfactor_masked[non_disorder_indices] = res_bfactor
+    # this is not clean and could lead to errors
+    if len(disorder_residues) != res_sasa.shape[0] or res_sasa.shape[0] != seq_length:
+        res_sasa_masked = np.zeros(len(disorder_residues))
+        try:
+            res_sasa_masked[non_disorder_indices] = res_sasa
+        except ValueError:
+            print(f'Length of primary sequence {protein} does not match length of SASA scores')
+            print(f'Length of primary sequence: {len(disorder_residues)}')
+            print(f'Length of SASA scores: {res_sasa.shape[0]}')
+            print(f'Length of sequence from PDB: {seq_length}')
+            sys.exit(1)
+        res_bfactor_masked = np.zeros(len(disorder_residues))
+        res_bfactor_masked[non_disorder_indices] = res_bfactor
 
     assert len(disorder_residues) == res_sasa_masked.shape[0], f'Length of primary sequence {protein} does not match length of SASA scores'
 
