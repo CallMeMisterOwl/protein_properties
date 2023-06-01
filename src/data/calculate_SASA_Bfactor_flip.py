@@ -17,7 +17,7 @@ import argparse
 import multiprocessing as mp
 import os
 
-def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str]) -> tuple:
+def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str], protein_seq: list) -> tuple:
     """
     Calculates the SASA and B-factor scores for a given protein. 
     The SASA and B-factor scores are calculated for each residue in the protein.
@@ -41,11 +41,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    try:
-        seq = get_sequence(pdbx)[0] if len(get_sequence(pdbx)) == 1 else get_sequence(pdbx)[1]
-    except AlphabetError:
-        print(f'AlphabetError {protein}\n')
-        return protein, None, None
+    seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C')))
     seq_wo_X = str(seq).replace('X', '')
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
@@ -131,7 +127,7 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     proteins = fasta_file.get_headers()
     with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
-                                    args=(protein, pdb_path, mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))])) for protein in proteins]
+                                    args=(protein, pdb_path, mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: sasa_scores for protein, sasa_scores, _ in results}
     bfactor_scores = {protein: bfactor_scores for protein, _, bfactor_scores in results}
