@@ -9,7 +9,7 @@ from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
 from biotite.sequence import ProteinSequence
-from . import fasta
+from .fasta import Fasta
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from utils import align_sequences_nw
@@ -105,7 +105,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     return protein, res_sasa, res_bfactor
 
 
-def calculate_scores(fasta_file: fasta.Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
+def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
     """
     Calculates the SASA and B-factor scores for every protein in the fasta file. 
     The SASA and B-factor scores are calculated for each residue in the protein.
@@ -149,9 +149,9 @@ def main(args: Optional[list] = None):
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
-    mapping_fasta = fasta.Fasta(mapping_file)
+    mapping_fasta = Fasta(mapping_file)
     for fasta_path in fasta_files:
-        fasta = fasta.Fasta(fasta_path)
+        fasta = Fasta(fasta_path)
         sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta)
         copy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta')
         fasta.append(sasa_scores).write_fasta(f'{output_path}/sasa/{Path(fasta_path).stem}_sasa.fasta')
