@@ -17,8 +17,8 @@ import argparse
 import multiprocessing as mp
 import os
 
-
-aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F"}
+# TODO find a way to automatically substitute non-generic amino acid with generic ones 
+aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A"}
 
 def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str], protein_seq: list) -> tuple:
     """
@@ -70,11 +70,6 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     # mask the residues that are not in the PDB files, due to disorder
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
-
-    # In some cases the PDB file contains a fraction of the residues that are in the primary sequence
-    # so if the PDB file contains 100 less residues than the primary sequence, we discard the protein
-    if res_sasa.shape[0] + 100  < len(disorder_residues):
-        return protein, None, None  
     
     if len(disorder_residues) != res_sasa.shape[0]:
         # this should be of the size of the sequence that is longer 
@@ -103,6 +98,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
             alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             seq_chain_overlap = np.array(list(alignment[1])) != '-'
+            # gaps in both primary sequence and PDB sequence -> worst case scenario
             if len(seq[non_disorder_indices]) < len("".join(seq_chain_a_single)):
                 try:
                     res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
@@ -111,7 +107,10 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
                     return protein, None, None
                 res_bfactor_masked[non_disorder_indices] = res_bfactor[primary_seq_overlap]
             elif len(seq[non_disorder_indices]) > len("".join(seq_chain_a_single)):
-                res_sasa_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_sasa
+                try:
+                    res_sasa_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_sasa
+                except IndexError:
+                    print(f"Protein {protein} sucks")
                 res_bfactor_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_bfactor
             else:
                 print(f'Skipping protein {protein}...\n I hate my life\n')
