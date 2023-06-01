@@ -8,7 +8,7 @@ from tqdm import tqdm
 from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
-from biotite.sequence import ProteinSequence
+from biotite.sequence import ProteinSequence, AlphabetError
 from .fasta import Fasta
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -41,7 +41,11 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    seq = get_sequence(pdbx)[0] if len(get_sequence(pdbx)) == 1 else get_sequence(pdbx)[1]
+    try:
+        seq = get_sequence(pdbx)[0] if len(get_sequence(pdbx)) == 1 else get_sequence(pdbx)[1]
+    except AlphabetError:
+        print(f'AlphabetError {protein}\n')
+        return protein, None, None
     seq_wo_X = str(seq).replace('X', '')
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
