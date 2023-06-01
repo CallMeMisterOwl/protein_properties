@@ -93,8 +93,14 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
             print(f'{protein}\n') 
             alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
-            # TODO IndexError: boolean index did not match indexed array along dimension 0; dimension is 122 but corresponding boolean dimension is 125
-            res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
+            # TODO IndexError: boolean index did not match indexed array along dimension 0; 
+            # dimension is 122 but corresponding boolean dimension is 125
+            # This happens because the PDB files contains less residues than the primary sequence
+            try:
+                res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
+            except IndexError:
+                print(f'Skipping protein {protein}...\n')
+                return protein, None, None
             res_bfactor = res_bfactor[primary_seq_overlap]
             
         res_bfactor_masked = np.zeros(len(disorder_residues))
@@ -137,7 +143,7 @@ def main(args: Optional[list] = None):
     parser.add_argument('-p', '--pdb_path', required=True, help='Path to PDB structures')
     parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
-    parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use')
+    parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use', type=int)
 
     # Parse arguments
     if args is None:
