@@ -41,7 +41,8 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C')))
+    # Thank you biotite for this wonderful class, NOT!
+    seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
     seq_wo_X = str(seq).replace('X', '')
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
@@ -127,7 +128,9 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     proteins = fasta_file.get_headers()
     with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
-                                    args=(protein, pdb_path, mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) for protein in proteins]
+                                    args=(protein, pdb_path, 
+                                          mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], 
+                                          mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: sasa_scores for protein, sasa_scores, _ in results}
     bfactor_scores = {protein: bfactor_scores for protein, _, bfactor_scores in results}
