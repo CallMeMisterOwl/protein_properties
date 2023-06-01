@@ -17,6 +17,9 @@ import argparse
 import multiprocessing as mp
 import os
 
+
+aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F"}
+
 def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str], protein_seq: list) -> tuple:
     """
     Calculates the SASA and B-factor scores for a given protein. 
@@ -43,7 +46,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
     # Thank you biotite for this wonderful class, NOT!
     seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
-    seq_wo_X = str(seq).replace('X', '')
+
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
     chain_starts = biostruc.get_chain_starts(struct).tolist()
@@ -68,9 +71,12 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
     
-    # this is not clean and could lead to errors
-    if len(disorder_residues) != res_sasa.shape[0] or res_sasa.shape[0] != seq_length:
+
+    if len(disorder_residues) != res_sasa.shape[0]:
+        # this should be of the size of the sequence that is longer 
+        # so len(disorder_residues) or len(seq[non_disorder_indices])
         res_sasa_masked = np.zeros(len(disorder_residues))
+        res_bfactor_masked = np.zeros(len(disorder_residues))
         try:
             res_sasa_masked[non_disorder_indices] = res_sasa
         except ValueError:
@@ -85,28 +91,27 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
                 try:
                     seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
                 except KeyError:
-                    if aa == 'PYL':
-                        seq_chain_a_single.append('O')
-                    elif aa == 'SEC':
-                        seq_chain_a_single.append('U')
-                    else:
+                    try:
+                        seq_chain_a_single.append(aa_dict[aa])
+                    except KeyError:
                         seq_chain_a_single.append('X')
             print(f'{protein}\n') 
             alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
-            # TODO IndexError: boolean index did not match indexed array along dimension 0; 
-            # dimension is 122 but corresponding boolean dimension is 125
-            # This happens because the PDB files contains less residues than the primary sequence
-            try:
-                res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
-            except IndexError:
-                print(f'Skipping protein {protein}...\n')
-                return protein, None, None
-            res_bfactor = res_bfactor[primary_seq_overlap]
-            
-        res_bfactor_masked = np.zeros(len(disorder_residues))
-        res_bfactor_masked[non_disorder_indices] = res_bfactor
-
+            seq_chain_overlap = np.array(list(alignment[1])) != '-'
+            if len(seq[non_disorder_indices]) < len("".join(seq_chain_a_single)):
+                try:
+                    res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
+                except IndexError:
+                    print(f'Skipping protein {protein}...\n')
+                    return protein, None, None
+                res_bfactor_masked[non_disorder_indices] = res_bfactor[primary_seq_overlap]
+            elif len(seq[non_disorder_indices]) > len("".join(seq_chain_a_single)):
+                res_sasa_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_sasa
+                res_bfactor_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_bfactor
+            else:
+                print(f'Skipping protein {protein}...\n I hate my life\n')
+                raise ValueError
         return protein, res_sasa_masked, res_bfactor_masked
     return protein, res_sasa, res_bfactor
 
