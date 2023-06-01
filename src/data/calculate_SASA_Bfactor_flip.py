@@ -41,7 +41,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    seq = get_sequence(pdbx)[0]
+    seq = get_sequence(pdbx)[0] if len(get_sequence(pdbx)) == 1 else get_sequence(pdbx)[1]
     seq_wo_X = str(seq).replace('X', '')
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
@@ -52,7 +52,7 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     else:
         struct = struct[chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
     
-    struct = struct[biostruc.filter_canonical_amino_acids(struct)]
+    struct = struct[biostruc.filter_amino_acids(struct)]
     atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
 
     res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
