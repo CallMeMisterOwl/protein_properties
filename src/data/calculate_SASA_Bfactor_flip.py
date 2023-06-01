@@ -70,8 +70,12 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     # mask the residues that are not in the PDB files, due to disorder
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
-    
 
+    # In some cases the PDB file contains a fraction of the residues that are in the primary sequence
+    # so if the PDB file contains 100 less residues than the primary sequence, we discard the protein
+    if res_sasa.shape[0] + 100  < len(disorder_residues):
+        return protein, None, None  
+    
     if len(disorder_residues) != res_sasa.shape[0]:
         # this should be of the size of the sequence that is longer 
         # so len(disorder_residues) or len(seq[non_disorder_indices])
