@@ -1,0 +1,17 @@
+# For more options, check out:
+# https://www.ibm.com/support/knowledgecenter/en/SSWRJV_10.1.0/lsf_command_ref/bsub.yaml.1.html
+io: 
+    cwd: /mnt/project/hasler/domain_pred
+    tty: ''
+limit: 
+    coreLimit: 8
+    runtimeLimit: 5:00
+    memLimit: 10G!
+resource:
+    gpu: num=1/task:mode=shared:gmem=8G:j_exclusive=no:gpack=yes
+
+properties:
+    queueName: mid-end-interactive
+    jobName: interactive_test_job
+    interactivePty: ''
+command: bash --login
