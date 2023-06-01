@@ -119,7 +119,7 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     bfactor_scores : dict the B-factor scores for each residue in the protein
     """
     proteins = fasta_file.get_headers()
-    with mp.Pool(nprocesses) as pool:
+    with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
                                     args=(protein, pdb_path, mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))])) for protein in proteins]
         results = [r.get() for r in tqdm(results)]
