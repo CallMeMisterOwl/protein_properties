@@ -90,14 +90,13 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
                         seq_chain_a_single.append('U')
                     else:
                         seq_chain_a_single.append('X')
-        
+            print(f'{protein}\n') 
             alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             # TODO IndexError: boolean index did not match indexed array along dimension 0; dimension is 122 but corresponding boolean dimension is 125
             res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
             res_bfactor = res_bfactor[primary_seq_overlap]
-        finally:
-            print(f'{protein}\n') 
+            
         res_bfactor_masked = np.zeros(len(disorder_residues))
         res_bfactor_masked[non_disorder_indices] = res_bfactor
 
