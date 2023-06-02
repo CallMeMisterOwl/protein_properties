@@ -79,21 +79,12 @@ def generate_sub_dict(protein: str, pdb_path: str, map_missing_res: list, protei
         for i, aa in enumerate(seq_chain_a_single):
             if aa != sub_seq[i] and three_letter_seq[i] not in aa_dict.keys():
                 aa_dict[three_letter_seq[i]] = sub_seq[i]
-                
+    else:
+        print(f"Could not find a match for {protein}")
+        
+
 def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
-    """
-    Calculates the SASA and B-factor scores for every protein in the fasta file. 
-    The SASA and B-factor scores are calculated for each residue in the protein.
-    Parameters
-    ----------
-    fasta_file : Fasta the fasta file containing the protein sequences
-    pdb_path : str the path to the PDB files
-    nprocesses : int the number of processes to use for multiprocessing
-    Returns
-    -------
-    sasa_scores : dict the SASA scores for each residue in the protein
-    bfactor_scores : dict the B-factor scores for each residue in the protein
-    """
+    
     proteins = fasta_file.get_headers()
     with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(generate_sub_dict, 
