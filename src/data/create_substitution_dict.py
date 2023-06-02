@@ -123,3 +123,6 @@ def main():
     print("Done!")
     with open(os.path.join(output_path, 'substitution_dict.json'), 'w') as f:
         json.dump(super_dict, f)
+        
+if __name__ == '__main__':
+    main()
