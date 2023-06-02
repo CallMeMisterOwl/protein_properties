@@ -18,7 +18,7 @@ import multiprocessing as mp
 import os
 
 # TODO find a way to automatically substitute non-generic amino acid with generic ones 
-aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A"}
+aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A", "MLY": "K"}
 
 def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str], protein_seq: list) -> tuple:
     """
@@ -72,19 +72,12 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
     
     if len(disorder_residues) != res_sasa.shape[0]:
-        # this should be of the size of the sequence that is longer 
-        # so len(disorder_residues) or len(seq[non_disorder_indices])
         res_sasa_masked = np.zeros(len(disorder_residues))
         res_bfactor_masked = np.zeros(len(disorder_residues))
         try:
+            # see if the per residue SASA and B-factor scores can be mapped to the primary sequence when using only non-disordered residues
             res_sasa_masked[non_disorder_indices] = res_sasa
         except ValueError:
-            """
-            Essentially, this is a hack to deal with the fact that the PDB file contains more residues than in the primary sequence, 
-            even when only considering the residues that are not disordered.
-            So if this is the case, this piece of code aligns the primary sequence against the residue sequence in the PDB file.
-            This deals only with the case that the PDB sequence is longer than the primary sequence !!!
-            """
             seq_chain_a_single = []
             for aa in biostruc.get_residues(struct)[1]:
                 try:
@@ -95,26 +88,30 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
                     except KeyError:
                         seq_chain_a_single.append('X')
             print(f'{protein}\n') 
-            alignment = align_sequences_nw(seq[non_disorder_indices], "".join(seq_chain_a_single))
+            # TODO shouldn't this be just seq against seq_chain_a_single ?
+            alignment = align_sequences_nw(seq, "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             seq_chain_overlap = np.array(list(alignment[1])) != '-'
-            # gaps in both primary sequence and PDB sequence -> worst case scenario
-            if len(seq[non_disorder_indices]) < len("".join(seq_chain_a_single)):
+
+            if np.any(primary_seq_overlap == False) and np.any(seq_chain_overlap == False):
+                print(f'Fuck {protein}')
+                return protein, None, None
+            
+            elif np.any(seq_chain_overlap == False):
                 try:
-                    res_sasa_masked[non_disorder_indices] = res_sasa[primary_seq_overlap] 
+                    res_sasa_masked[seq_chain_overlap] = res_sasa
                 except IndexError:
                     print(f'Skipping protein {protein}...\n')
                     return protein, None, None
-                res_bfactor_masked[non_disorder_indices] = res_bfactor[primary_seq_overlap]
-            elif len(seq[non_disorder_indices]) > len("".join(seq_chain_a_single)):
+                res_bfactor_masked[seq_chain_overlap] = res_bfactor
+            
+            elif np.any(primary_seq_overlap == False):
                 try:
-                    res_sasa_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_sasa
+                    res_sasa_masked = res_sasa[primary_seq_overlap]
                 except IndexError:
-                    print(f"Protein {protein} sucks")
-                res_bfactor_masked[np.array(non_disorder_indices)[seq_chain_overlap]] = res_bfactor
-            else:
-                print(f'Skipping protein {protein}...\n I hate my life\n')
-                raise ValueError
+                    print(f'Skipping protein {protein}...\n')
+                    return protein, None, None
+                res_bfactor_masked = res_bfactor[primary_seq_overlap]
         return protein, res_sasa_masked, res_bfactor_masked
     return protein, res_sasa, res_bfactor
 
