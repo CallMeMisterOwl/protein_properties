@@ -100,7 +100,7 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
             super_dict.setdefault(k, []).append(v)
     return super_dict
 
-def main():
+def main(args: Optional[list] = None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-s', '--fasta_files', required=True, help='Path to fasta files')
