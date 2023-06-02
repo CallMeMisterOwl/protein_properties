@@ -177,7 +177,7 @@ def main(args: Optional[list] = None):
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
     global aa_dict
-    with open("../../data/substitution_dict.json", "r") as f:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
         
     for fasta_path in fasta_files:
