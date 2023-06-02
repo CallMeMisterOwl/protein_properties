@@ -114,5 +114,6 @@ def main():
     mapping_fasta = Fasta(mapping_file)
     nprocesses = args.n_processes
     calculate_scores(fasta_files, pdb_path, nprocesses, mapping_fasta)
+    print("Done!")
     with open(os.path.join(output_path, 'substitution_dict.json'), 'w') as f:
         json.dump(aa_dict, f)
