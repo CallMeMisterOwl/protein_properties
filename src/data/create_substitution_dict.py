@@ -95,9 +95,9 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     super_dict = {}
     for d in results:
         for k, v in d.items():  
-            super_dict.setdefault(k, []).append(v)
+            super_dict[k] = v
     for k, v in aa_dict.items():  
-            super_dict.setdefault(k, []).append(v)
+            super_dict[k] = v
     return super_dict
 
 def main(args: Optional[list] = None):
