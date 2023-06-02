@@ -19,6 +19,7 @@ import multiprocessing as mp
 import os
 
 aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A", "MLY": "K"}
+
 def generate_sub_dict(protein: str, pdb_path: str, map_missing_res: list, protein_seq: str):
     """
     Generates a dictionary that maps the amino acid sequence of the protein to the PDBx file.
@@ -65,30 +66,39 @@ def generate_sub_dict(protein: str, pdb_path: str, map_missing_res: list, protei
                 seq_chain_a_single.append('X')
     
     three_letter_seq = biostruc.get_residues(struct)[1]
-
+    sub_dict = {}
+    
     if len(biostruc.get_residues(struct)[1]) == len(seq):
         for i, aa in enumerate(seq_chain_a_single):
-            if aa != seq[i] and three_letter_seq[i] not in aa_dict.keys():
-                aa_dict[three_letter_seq[i]] = seq[i]
+            if aa != seq[i] and three_letter_seq[i] not in aa_dict.keys() and three_letter_seq[i] not in sub_dict.keys():
+                sub_dict[three_letter_seq[i]] = seq[i]
     elif len(biostruc.get_residues(struct)[1]) == len(seq[[i for i, x in enumerate(list("".join(map_missing_res))) if x == "-"]]):
         non_disorder_indices = [i for i, x in enumerate(list("".join(map_missing_res))) if x == "-"]
         sub_seq = seq[non_disorder_indices]
         for i, aa in enumerate(seq_chain_a_single):
-            if aa != sub_seq[i] and three_letter_seq[i] not in aa_dict.keys():
-                aa_dict[three_letter_seq[i]] = sub_seq[i]
+            if aa != sub_seq[i] and three_letter_seq[i] not in aa_dict.keys() and three_letter_seq[i] not in sub_dict.keys():
+                sub_dict[three_letter_seq[i]] = sub_seq[i]
     else:
         print(f"Could not find a match for {protein}")
+    return sub_dict
         
 
 def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
     
     proteins = fasta_file.get_headers()
     with mp.Pool(int(nprocesses)) as pool:
-        [pool.apply_async(generate_sub_dict, 
+        results = [pool.apply_async(generate_sub_dict, 
                                     args=(protein, pdb_path, 
                                           mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], 
                                           mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) for protein in proteins]
-
+        results = [r.get() for r in tqdm(results)]
+    super_dict = {}
+    for d in results:
+        for k, v in d.iteritems():  # d.items() in Python 3+
+            super_dict.setdefault(k, []).append(v)
+    for k, v in aa_dict.iteritems():  # d.items() in Python 3+
+            super_dict.setdefault(k, []).append(v)
+    return super_dict
 
 def main():
     parser = argparse.ArgumentParser()
@@ -103,14 +113,13 @@ def main():
     if args is None:
         args = parser.parse_args()
     # Access arguments
-
     fasta_files = Fasta(args.fasta_files)
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
     nprocesses = args.n_processes
-    calculate_scores(fasta_files, pdb_path, nprocesses, mapping_fasta)
+    super_dict = calculate_scores(fasta_files, pdb_path, nprocesses, mapping_fasta)
     print("Done!")
     with open(os.path.join(output_path, 'substitution_dict.json'), 'w') as f:
-        json.dump(aa_dict, f)
+        json.dump(super_dict, f)
