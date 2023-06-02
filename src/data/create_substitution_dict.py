@@ -21,18 +21,15 @@ import os
 aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A", "MLY": "K"}
 def generate_sub_dict(protein: str, pdb_path: str, map_missing_res: list, protein_seq: str):
     """
-    Calculates the SASA and B-factor scores for a given protein. 
-    The SASA and B-factor scores are calculated for each residue in the protein.
+    Generates a dictionary that maps the amino acid sequence of the protein to the PDBx file.
     Parameters
     ----------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
+    protein : str the name of the protein
     pdb_path : str the path to the PDB files
-    map_missing_res : list[str] a list of the same length as the protein sequence, where each element is either '-' or 'X'.
+    map_missing_res : list the list of missing residues
+    protein_seq : str the amino acid sequence of the protein
     Returns
     -------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
-    res_sasa_masked : np.array the SASA scores for each residue in the protein
-    res_bfactor_masked : np.array the B-factor scores for each residue in the protein
     """
     cif_header: str = protein.split('-')[0]
 
@@ -107,7 +104,7 @@ def main():
         args = parser.parse_args()
     # Access arguments
 
-    fasta_files = args.fasta_files
+    fasta_files = Fasta(args.fasta_files)
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
