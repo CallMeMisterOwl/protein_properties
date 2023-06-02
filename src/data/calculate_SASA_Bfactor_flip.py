@@ -1,4 +1,5 @@
 from copy import copy
+import json
 from pathlib import Path
 import sys
 from typing import Optional
@@ -18,17 +19,25 @@ import multiprocessing as mp
 import os
 
 # TODO find a way to automatically substitute non-generic amino acid with generic ones 
-aa_dict = {"PYL": "K", "SEC": "C", "AIB": "A", "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A", "MLY": "K"}
 
-def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: list[str], protein_seq: list) -> tuple:
+
+def calculate_scores_for_protein(protein: str, 
+                                 pdb_path: str,
+                                 map_missing_res: list[str], 
+                                 protein_seq: list, 
+                                 sub_dict: Optional[dict] = None) -> tuple:
     """
     Calculates the SASA and B-factor scores for a given protein. 
     The SASA and B-factor scores are calculated for each residue in the protein.
+    
     Parameters
     ----------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
+    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not the minus sign.
     pdb_path : str the path to the PDB files
     map_missing_res : list[str] a list of the same length as the protein sequence, where each element is either '-' or 'X'.
+    protein_seq : list[str] the protein sequence in the one-letter amino acid code.
+    sub_dict : dict a dictionary that maps non-generic amino acids to generic ones. In case this function is executed outside the script, a substitution dictionary must be provided.
+    
     Returns
     -------
     protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
@@ -116,20 +125,24 @@ def calculate_scores_for_protein(protein: str, pdb_path: str, map_missing_res: l
     return protein, res_sasa, res_bfactor
 
 
-def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta) -> tuple[dict, dict]:
+def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta: Fasta) -> tuple[dict, dict]:
     """
     Calculates the SASA and B-factor scores for every protein in the fasta file. 
     The SASA and B-factor scores are calculated for each residue in the protein.
+    
     Parameters
     ----------
-    fasta_file : Fasta the fasta file containing the protein sequences
-    pdb_path : str the path to the PDB files
-    nprocesses : int the number of processes to use for multiprocessing
+    fasta_file (Fasta):  the fasta file containing the protein sequences
+    pdb_path (str):  the path to the PDB files
+    nprocesses (int):  the number of processes to use for multiprocessing
+    mapping_fasta (Fasta):  the fasta file containing the mapping between the primary sequence and disorder/ordered residues. In addition contains the sequence and secondary structure of the protein.
+    
     Returns
     -------
-    sasa_scores : dict the SASA scores for each residue in the protein
-    bfactor_scores : dict the B-factor scores for each residue in the protein
+    sasa_scores (dict):  the SASA scores for each residue in the protein
+    bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
+    
     proteins = fasta_file.get_headers()
     with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
@@ -163,6 +176,10 @@ def main(args: Optional[list] = None):
     mapping_file = args.mapping_file
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
+    global aa_dict
+    with open("../data/substitution_dict.json", "r") as f:
+        aa_dict = json.load(f)
+        
     for fasta_path in fasta_files:
         fasta = Fasta(fasta_path)
         sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta)
