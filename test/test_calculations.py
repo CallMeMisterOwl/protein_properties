@@ -1,7 +1,5 @@
 import unittest
 import os
-
-import numpy as np
 from src.data.fasta import Fasta
 from src.data.calculate_SASA_Bfactor_flip import calculate_scores_for_protein, calculate_scores
 from biotite.structure.io.pdbx import PDBxFile, get_structure
@@ -23,28 +21,44 @@ class TestCalculateScores(unittest.TestCase):
             f.write(">12as-A\n")
             f.write("TETSQVAPA\n")
         # Set path to PDB structures
-        cls.pdb_path = "test/data/"
+        cls.pdb_path = os.path.join(cls.test_dir, "pdb_structures")
         os.makedirs(cls.pdb_path, exist_ok=True)
         # Copy CIF files for testing
+        os.system(f"cp data/1ls1.cif {cls.pdb_path}")
+        os.system(f"cp data/12as.cif {cls.pdb_path}")
 
     def test_calculate_scores_for_protein(self):
-        protein1 = "1ls1-A"
-        pdb_path1 = self.pdb_path
-        map_missing_res1 = ["---------------------------------------------------------------------------",
-        "---------------------------------------------------------------------------",
-        "---------------------------------------------------------------------------",
-        "----------------------------------------------XXXXXX------------------"]
-        expected_output1 = ("1ls1-A", np.array([0.0, 0.0, ...]), np.array([0.0, 0.0, ...]))
+        # Test with one protein
+        protein = "1ls1-A"
+        pdb_path = self.pdb_path
+        sasa_scores, bfactor_scores = calculate_scores_for_protein(protein, pdb_path)
+        self.assertIsInstance(sasa_scores, list)
+        self.assertIsInstance(bfactor_scores, list)
+        self.assertEqual(len(sasa_scores), 202)
+        self.assertEqual(len(bfactor_scores), 202)
+        # Test with non-existing protein
+        protein = "2abc-A"
+        pdb_path = self.pdb_path
+        with self.assertRaises(FileNotFoundError):
+            sasa_scores, bfactor_scores = calculate_scores_for_protein(protein, pdb_path)
 
-        protein2 = "12as-A"
-        pdb_path2 = self.pdb_path
-        map_missing_res2 = ["XXX------------------------------------------------------------------------", "---------------------------------------------------------------------------", "---------------------------------------------------------------------------", "---------------------------------------------------------------------------", "------------------------------"]
-        expected_output2 = ("12as-A", np.array([0.0, 0.0, ...]), np.array([0.0, 0.0, ...]))
-
-        # Add more test cases if needed
-
-        calculate_scores_for_protein(protein1, pdb_path1, map_missing_res1) == expected_output1
-        calculate_scores_for_protein(protein2, pdb_path2, map_missing_res2) == expected_output2
+    def test_calculate_scores(self):
+        # Test with one protein
+        fasta_file = Fasta(self.fasta_file)
+        pdb_path = self.pdb_path
+        sasa_scores, bfactor_scores = calculate_scores(fasta_file, pdb_path)
+        self.assertIsInstance(sasa_scores, dict)
+        self.assertIsInstance(bfactor_scores, dict)
+        self.assertEqual(len(sasa_scores), 2)
+        self.assertEqual(len(bfactor_scores), 2)
+        self.assertEqual(len(sasa_scores["12as-A"]), 5385)
+        self.assertEqual(len(bfactor_scores["12as-A"]), 5385)
+        # Test with non-existing protein
+        fasta_file = Fasta(self.fasta_file)
+        fasta_file._sequences["2abc-A"] = ["MENKVLIEGELANVSVLGGAKKLKDLAEEIATYYK"]
+        pdb_path = self.pdb_path
+        with self.assertRaises(FileNotFoundError):
+            sasa_scores, bfactor_scores = calculate_scores(fasta_file, pdb_path)
 
 
 
