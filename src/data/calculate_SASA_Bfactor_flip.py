@@ -83,8 +83,13 @@ def calculate_scores_for_protein(protein: str,
     if len(disorder_residues) != res_sasa.shape[0]:
         res_sasa_masked = np.zeros(len(disorder_residues))
         res_bfactor_masked = np.zeros(len(disorder_residues))
+
+        """
+        see if the per residue SASA and B-factor scores can be mapped to the primary 
+        sequence when using only non-disordered residues
+        """
         try:
-            # see if the per residue SASA and B-factor scores can be mapped to the primary sequence when using only non-disordered residues
+            
             res_sasa_masked[non_disorder_indices] = res_sasa
         except ValueError:
             seq_chain_a_single = []
@@ -102,25 +107,49 @@ def calculate_scores_for_protein(protein: str,
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             seq_chain_overlap = np.array(list(alignment[1])) != '-'
 
-            if np.any(primary_seq_overlap == False) and np.any(seq_chain_overlap == False):
-                print(f'Fuck {protein}')
-                return protein, None, None
+            """
+            Case 1 - the alignment has gaps in the primary sequence and in the sequence from the PDB file
+            Solution - remove the part of the sequence that causes the gap in the primary sequence, 
+            afterwards treat it like case 2
+
+            Case 2 - the alignment has gaps in the sequence from the PDB file, but not in the primary sequence
+            Solution - mask the residues that are not in the PDB file, but are in the primary sequence    
             
+            Case 3 - the alignment has gaps in the primary sequence, but not in the sequence from the PDB file
+            Solution - mask the residues that are not in the primary sequence, but are in the PDB file
+            Not sure if this case is possible, but it's here just in case   
+            """
+            if np.any(primary_seq_overlap == False) and np.any(seq_chain_overlap == False):
+                seq_chain_overlap_cut = seq_chain_overlap[primary_seq_overlap]
+                try:
+                    res_sasa_masked[seq_chain_overlap_cut] = res_sasa
+                except IndexError as i:
+                    print(f'Skipping protein {protein}...\n')
+                    print(i)
+                    return protein, None, None
+                res_bfactor_masked[seq_chain_overlap_cut] = res_bfactor
+
             elif np.any(seq_chain_overlap == False):
                 try:
                     res_sasa_masked[seq_chain_overlap] = res_sasa
-                except IndexError:
+                except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
+                    print(i)
                     return protein, None, None
                 res_bfactor_masked[seq_chain_overlap] = res_bfactor
             
             elif np.any(primary_seq_overlap == False):
                 try:
                     res_sasa_masked = res_sasa[primary_seq_overlap]
-                except IndexError:
+                except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
+                    print(i)
                     return protein, None, None
                 res_bfactor_masked = res_bfactor[primary_seq_overlap]
+            
+            else:
+                print(f"Investiage protein {protein}")
+                return protein, None, None
         return protein, res_sasa_masked, res_bfactor_masked
     return protein, res_sasa, res_bfactor
 
