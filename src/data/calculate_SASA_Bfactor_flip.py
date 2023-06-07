@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 import json
 from pathlib import Path
 import sys
@@ -225,7 +225,7 @@ def main(args: Optional[list] = None):
     for fasta_path in fasta_files:
         fasta = Fasta(fasta_path)
         sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta)
-        copy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta', overwrite=True)
+        deepcopy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta', overwrite=True)
         fasta.append(sasa_scores).write_fasta(f'{output_path}/sasa/{Path(fasta_path).stem}_sasa.fasta', overwrite=True)
 
 
