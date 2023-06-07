@@ -19,7 +19,7 @@ import multiprocessing as mp
 import os
 
 # TODO find a way to automatically substitute non-generic amino acid with generic ones 
-
+aa_dict = None
 
 def calculate_scores_for_protein(protein: str, 
                                  pdb_path: str,
@@ -45,10 +45,13 @@ def calculate_scores_for_protein(protein: str,
     res_bfactor_masked : np.array the B-factor scores for each residue in the protein
     """
     cif_header: str = protein.split('-')[0]
-    if sub_dict is None and "aa_dict" not in globals():
+    global aa_dict
+    if sub_dict is None and not aa_dict:
         raise ValueError("No substitution dictionary provided!\nIf you import this function from another script, please provide a substitution dictionary")
     elif sub_dict is not None:
         aa_dict = sub_dict
+        
+
     try:
         pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
     except FileNotFoundError:
