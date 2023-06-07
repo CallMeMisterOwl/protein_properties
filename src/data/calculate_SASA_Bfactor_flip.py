@@ -40,12 +40,15 @@ def calculate_scores_for_protein(protein: str,
     
     Returns
     -------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not allowed not the minus sign.
+    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not the minus sign.
     res_sasa_masked : np.array the SASA scores for each residue in the protein
     res_bfactor_masked : np.array the B-factor scores for each residue in the protein
     """
     cif_header: str = protein.split('-')[0]
-
+    if sub_dict is None and aa_dict not in globals():
+        raise ValueError("No substitution dictionary provided!\nIf you import this function from another script, please provide a substitution dictionary")
+    elif sub_dict is not None:
+        aa_dict = sub_dict
     try:
         pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
     except FileNotFoundError:
@@ -101,7 +104,6 @@ def calculate_scores_for_protein(protein: str,
                         seq_chain_a_single.append(aa_dict[aa])
                     except KeyError:
                         seq_chain_a_single.append('X')
-            print(f'{protein}\n') 
             # TODO shouldn't this be just seq against seq_chain_a_single ?
             alignment = align_sequences_nw(seq, "".join(seq_chain_a_single))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
@@ -121,13 +123,20 @@ def calculate_scores_for_protein(protein: str,
             """
             if np.any(primary_seq_overlap == False) and np.any(seq_chain_overlap == False):
                 seq_chain_overlap_cut = seq_chain_overlap[primary_seq_overlap]
+                # TODO remove the part that causes the gap from SASA and B-factor arrays
+                sasa_index = []
+                counter = 0
+                for i in range(len(primary_seq_overlap)):
+                    if seq_chain_overlap[i] == True and primary_seq_overlap[i] != False:
+                        sasa_index.append(counter)
+                        counter += 1
                 try:
-                    res_sasa_masked[seq_chain_overlap_cut] = res_sasa
+                    res_sasa_masked[seq_chain_overlap_cut] = res_sasa[sasa_index]
                 except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
                     print(i)
                     return protein, None, None
-                res_bfactor_masked[seq_chain_overlap_cut] = res_bfactor
+                res_bfactor_masked[seq_chain_overlap_cut] = res_bfactor[sasa_index]
 
             elif np.any(seq_chain_overlap == False):
                 try:
