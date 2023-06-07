@@ -45,7 +45,7 @@ def calculate_scores_for_protein(protein: str,
     res_bfactor_masked : np.array the B-factor scores for each residue in the protein
     """
     cif_header: str = protein.split('-')[0]
-    if sub_dict is None and aa_dict not in globals():
+    if sub_dict is None and "aa_dict" not in globals():
         raise ValueError("No substitution dictionary provided!\nIf you import this function from another script, please provide a substitution dictionary")
     elif sub_dict is not None:
         aa_dict = sub_dict
