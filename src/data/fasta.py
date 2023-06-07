@@ -63,7 +63,7 @@ class Fasta:
         with open(path, 'w') as f:
             for header, sequence in self._sequences.items():
                 f.write(f'>{header}\n')
-                f.write('\n'.join([i if isinstance(i, str) else '|'.join(str(x) for x in i) for i in sequence]) + '\n')
+                f.write('\n'.join([i if isinstance(i, str) else '|'.join([str(x) for x in i]) for i in sequence]) + '\n')
 
     def get_sequence(self, header: str) -> Optional[list]:
         """
