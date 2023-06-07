@@ -100,9 +100,9 @@ class TestFasta(unittest.TestCase):
         self.assertEqual(fasta1.get_sequence('header1'), ['ATCG', 'GTAC', 'CGAT', 'CATG'])
 
         # Test appending dictionary
-        fasta1.append({'header1': ['TTAG', 'ACGT']})
+        fasta1.append({'header1': [[1,2,1,3,4]]})
         self.assertEqual(fasta1.get_sequence('header1'),
-                         ['ATCG', 'GTAC', 'CGAT', 'CATG', 'TTAG', 'ACGT'])
+                         ['ATCG', 'GTAC', 'CGAT', 'CATG', [1,2,1,3,4]])
 
         # Test appending dictionary with lists of ints
         fasta3 = Fasta(sequences={'header1': [[1, 2, 3], [4, 5, 6]]})
