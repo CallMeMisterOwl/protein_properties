@@ -97,6 +97,7 @@ def calculate_scores_for_protein(protein: str,
         try:
             
             res_sasa_masked[non_disorder_indices] = res_sasa
+            res_bfactor_masked[non_disorder_indices] = res_bfactor
         except ValueError:
             seq_chain_a_single = []
             for aa in biostruc.get_residues(struct)[1]:
