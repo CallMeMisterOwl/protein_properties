@@ -79,8 +79,8 @@ def calculate_scores_for_protein(protein: str,
 
     # clip so the mask can be recognized by the model
     # divide by 100 to get smaller values -> better for the model gradient 
-    res_sasa = res_sasa.clip(0.00001) / 100
-    res_bfactor = res_bfactor.clip(0.00001) / 100
+    res_sasa = res_sasa.clip(0.00001)
+    res_bfactor = res_bfactor.clip(0.00001)
 
     # mask the residues that are not in the PDB files, due to disorder
     disorder_residues = list("".join(map_missing_res))
