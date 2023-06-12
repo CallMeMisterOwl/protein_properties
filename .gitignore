@@ -1,6 +1,6 @@
 .idea/*
 .vscode/*
-data/*
+
 src/__pycache__
 src/data/__pycache__
 test/__pycache__
