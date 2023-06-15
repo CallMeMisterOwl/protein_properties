@@ -1,0 +1,14 @@
+io:
+    tty: ''
+limit:
+    coreLimit: 48
+    memLimit: 200G
+resource:
+    machines: lsf-server-7
+properties:
+    envVariable: "LSB_CONTAINER_IMAGE=registry.rostlab.org/rostlab/rostclust"
+    queueName: mid-end-docker-interactive
+    jobName: rostclust
+    interactivePty: ''
+
+command: /bin/bash
