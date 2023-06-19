@@ -1,14 +1,15 @@
 io:
-    tty: ''
+    outputOverwriteFile: /mnt/project/hasler/protein_properties/stdout.log
+    errorOverwriteFile: /mnt/project/hasler/protein_properties/stderr.log
 limit:
-    coreLimit: 48
-    memLimit: 200G
+    coreLimit: 12
+    memLimit: 12G
+    runtimeLimit: 2:00
 resource:
     machines: lsf-server-7
 properties:
     envVariable: "LSB_CONTAINER_IMAGE=registry.rostlab.org/rostlab/rostclust"
-    queueName: mid-end-docker-interactive
+    queueName: mid-end-docker-normal
     jobName: rostclust
-    interactivePty: ''
 
-command: /bin/bash
+command: rostclust uniqueprot /mnt/home/hasler/project/protein_properties/data/glyco/glyco_all.fasta /mnt/home/hasler/project/protein_properties/data/glyco/rr_wscores_and_config_glyco_all.fasta --score-file /mnt/home/hasler/project/protein_properties/data/glyco/rr_scores.tsv --mmseqs-config-path /mnt/home/hasler/project/protein_properties/data/glyco/mmseqs2_config.json 
