@@ -1,0 +1,20 @@
+{
+    "eValue": 0.001,
+    "sensitivity": 7.5,
+    "seqCoverage": 0.5,
+    "minAlnLen": 0,
+    "minSeqId": 0.3,
+    "verbose": true,
+    "numIterations": 2,
+    "realign": 0,
+    "maxSeqs": 10000000,
+    "altAli": 999,
+    "dbLoadMode": 3,
+    "covMode": 0,
+    "gapOpen": 11,
+    "gapExtend": 1,
+    "similarityType": 1,
+    "clusterMode": 1,
+    "clusterSteps": 3,
+    "maxIterations": 100
+  }
