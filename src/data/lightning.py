@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
-from fasta import Fasta
+from .fasta import Fasta
 
 # I love copilot <3
 hoa_tien = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "Y": 255, "V": 165}
@@ -175,17 +175,18 @@ class SASADataModule(pl.LightningDataModule):
         print("Preparing data...")
         # Splitting the data into train, val and test set
         fasta = Fasta(self.data_dir / "train.o")
-        train, val = train_test_split(fasta.keys(), test_size=0.1, random_state=13, shuffle=True)
+        train, val = train_test_split(fasta.get_headers(), test_size=0.1, random_state=13, shuffle=True)
         filterByKey = lambda keys: {x: fasta[x] for x in keys}
         train_dict = filterByKey(train)
         val_dict = filterByKey(val)
         Fasta(sequences=train_dict).write_fasta(self.data_dir / "train.o", overwrite=True)
-        Fasta(sequences=train_dict).write_fasta(self.data_dir / "val.o", overwrite=True)
+        Fasta(sequences=val_dict).write_fasta(self.data_dir / "val.o", overwrite=True)
         print("Data preparation done!")
             
             
 
     def setup(self, stage=None):
+        self.prepare_data()
         if stage == "fit" or stage is None:
             self.train_dataset = SASADataset("train", self.config)
             self.val_dataset = SASADataset("val", self.config)

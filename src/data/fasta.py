@@ -191,12 +191,12 @@ class Fasta:
     def __radd__(self, other):
         return self + other
 
-    def __keys__(self):
+    def keys(self):
         return self.sequences.keys()
     
-    def __values__(self):
+    def values(self):
         return self.sequences.values()
     
-    def __items__(self):
+    def items(self):
         return self.sequences.items()
     
