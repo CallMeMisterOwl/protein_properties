@@ -21,7 +21,7 @@ class SASADataConfig:
     Data configuration for SASA dataset
     """
     data_dir: str = '../../data'
-    embedding_path: str = '../../data/embeddings_sasa.h5'
+    embedding_path: str = '../../data/sasaembeddings.h5'
     np_path: str = '../../data/'
     num_classes: Literal[2,3,10] = 3
     num_workers: int = 4
@@ -80,7 +80,6 @@ class SASADataset(Dataset):
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
-        self.split_path = Path(config.split_path)
         self.embedding_path = config.embedding_path
         self.np_path = Path(config.np_path)
         self.num_classes = config.num_classes
@@ -103,7 +102,7 @@ class SASADataset(Dataset):
             print("Loading data from scratch...")
 
         fasta = Fasta(self.data_dir / f"{self.split}.o")
-        embeddings = h5py.File(self.embeddings, 'r')
+        embeddings = h5py.File(self.embedding_path, 'r')
         X = []
         y = []
         for pid, seqs in tqdm(fasta.items()):
@@ -153,6 +152,7 @@ class SASADataModule(pl.LightningDataModule):
         self.data_dir = Path(config.data_dir)
         self.config = config
 
+        self.class_weights = None
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
@@ -187,11 +187,26 @@ class SASADataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.prepare_data()
-        if stage == "fit" or stage is None:
-            self.train_dataset = SASADataset("train", self.config)
-            self.val_dataset = SASADataset("val", self.config)
+        
+        self.train_dataset = SASADataset("train", self.config)
+        self.val_dataset = SASADataset("val", self.config)
         if stage == "test" or stage is None:
             self.test_dataset = SASADataset("test", self.config)
+        # calculate class weights for the loss function
+        ys = np.concatenate((np.apply_along_axis(np.concatenate, 0, self.train_dataset.ys),
+                             np.apply_along_axis(np.concatenate, 0, self.val_dataset.ys),
+                             np.apply_along_axis(np.concatenate, 0, self.test_dataset.ys)), axis=0)
+        counts = np.unique(ys, return_counts=True)[1]
+        if self.config.OUT_SIZE < 3:
+            # For binary predictions set only positive weight
+            self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
+            # For binary predictions have to convert class to float
+            self.train_dataset.ys = self.train_dataset.ys.astype(np.float16)
+            self.val_dataset.ys = self.val_dataset.ys.astype(np.float16)
+            self.test_dataset.ys = self.test_dataset.ys.astype(np.float16)
+        else:
+            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.OUT_SIZE)], dtype=torch.float32)
+
         
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=True, num_workers=self.config.num_workers)
