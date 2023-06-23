@@ -14,7 +14,7 @@ class Fasta:
 
     """
 
-    def __init__(self, path: Optional[str] = None, sequences: Optional[dict] = None):
+    def __init__(self, path: Optional[str | Path] = None, sequences: Optional[dict] = None):
         self.sequences = {} if sequences is None else sequences
         if path is not None:
             self.read_fasta(path)
@@ -25,7 +25,7 @@ class Fasta:
         :param path:
         :return: None
         """
-        path = Path(path)
+        path = Path(path) if not isinstance(path, Path) else path
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f'{path} does not exist or is not a file')
 
@@ -49,16 +49,16 @@ class Fasta:
                 sequence.append(line)
         self.sequences[header] = sequence
 
-    def write_fasta(self, path: str, overwrite: bool = False):
+    def write_fasta(self, path: str | Path, overwrite: bool = False):
         """
         Writes the sequences in a fasta file.
         :param overwrite: bool Overwrite the file if it exists
         :param path: str Path to the fasta file
         :return: None
         """
-        path = Path(path)
+        path = Path(path) if not isinstance(path, Path) else path
         if path.exists() and not overwrite:
-            raise FileExistsError(f'File {path} already exists')
+            raise FileExistsError(f'File {path} already exists!\nSet overwrite=True to overwrite the file')
         path.parents[0].mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             for header, sequence in self.sequences.items():
@@ -190,3 +190,13 @@ class Fasta:
 
     def __radd__(self, other):
         return self + other
+
+    def __keys__(self):
+        return self.sequences.keys()
+    
+    def __values__(self):
+        return self.sequences.values()
+    
+    def __items__(self):
+        return self.sequences.items()
+    
