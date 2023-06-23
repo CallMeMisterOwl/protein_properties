@@ -1,6 +1,7 @@
 .idea/*
 .vscode/*
-
+stderr.log
+stdout.log
 src/__pycache__
 src/data/__pycache__
 test/__pycache__
