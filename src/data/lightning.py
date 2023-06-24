@@ -113,16 +113,16 @@ class SASADataset(Dataset):
             rsa = np.where(rsa == 0.0, -1, rsa)
             # class 0 if below 16%, class 1 above or equal 16% (as described in the paper Rost and Sander (1994))
             if self.num_classes == 2:
-                rsa = np.where(rsa[rsa != -1] >= 0.16, 1, 0)
+                rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.16, 1, 0)
             # class 0 if below 9%, class 1 between 9% and 36%, class 2 above or equal 36%
             elif self.num_classes == 3:
-                rsa = np.where(rsa[rsa != -1] >= 0.36, 2, np.where(rsa[rsa != -1] >= 0.09, 1, 0))
+                rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.36, 2, np.where(rsa[rsa != -1] >= 0.09, 1, 0))
             # Ten-state class
             elif self.num_classes == 10:
                 # clipping the values to 1.0 -> it can happen that the rsa is larger than 1.0 since the highest observed values per aa are not 100% accurate
                 # this messes with the formular and produces more than 10 classes
-                rsa = np.clip(rsa, 0.0, 1.0)
-                np.sqrt(rsa * 100).round().astype(np.int16)
+                rsa[rsa != -1] = np.clip(rsa[rsa != -1], 0.0, 1.0)
+                rsa[rsa != -1] = np.sqrt(rsa[rsa != -1] * 100).round().astype(np.int16)
             else:
                 raise ValueError("Invalid number of classes!\nValid values are 2, 3 and 10.")
             y.append(rsa)
