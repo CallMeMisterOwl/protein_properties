@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.functional as F
 import torch
 from torch import nn
-from torchmetrics import Accuracy, F1
+from torchmetrics import Accuracy, F1Score
     
 
 class SASABaseline(pl.LightningModule):
