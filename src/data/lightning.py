@@ -97,8 +97,8 @@ class SASADataset(Dataset):
             raise NotImplementedError("Blind test set not implemented yet!")
         
         try:
-            self.X = np.load(str(self.np_path / f"{set}_X.npy"), allow_pickle=True)
-            self.y = np.load(str(self.np_path / f"{set}_y_c{self.num_classes}.npy"), allow_pickle=True)
+            self.X = np.load(str(self.np_path / f"{self.split}_X.npy"), allow_pickle=True)
+            self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
             return
         except:
             print("Loading data from scratch...")
@@ -108,7 +108,7 @@ class SASADataset(Dataset):
         X = []
         y = []
         for pid, seqs in tqdm(fasta.items()):
-            rsa = self.get_relative_sa(seqs[0], seqs[1])
+            rsa = self.get_relative_sa(seqs[0], seqs[1]).astype(np.float32)
             # masking the 0.0 values, so I can remove them later before calculating the loss
             rsa = np.where(rsa == 0.0, -1, rsa)
             # class 0 if below 16%, class 1 above or equal 16% (as described in the paper Rost and Sander (1994))
@@ -131,8 +131,8 @@ class SASADataset(Dataset):
             X.append(e)
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
-        np.save(str(self.np_path / f"{set}_X.npy"), self.X)
-        np.save(str(self.np_path / f"{set}_y_c{self.num_classes}.npy"), self.y)
+        np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
+        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), self.y)
         
     def get_relative_sa(self, seq, sasa):
         sasa = np.array(sasa)
@@ -194,25 +194,25 @@ class SASADataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.prepare_data()
-        
         self.train_dataset = SASADataset("train", self.config)
         self.val_dataset = SASADataset("val", self.config)
-        if stage == "test" or stage is None:
-            self.test_dataset = SASADataset("test", self.config)
+        self.test_dataset = SASADataset("test", self.config)
+
         # calculate class weights for the loss function
-        ys = np.concatenate((np.apply_along_axis(np.concatenate, 0, self.train_dataset.ys),
-                             np.apply_along_axis(np.concatenate, 0, self.val_dataset.ys),
-                             np.apply_along_axis(np.concatenate, 0, self.test_dataset.ys)), axis=0)
+        ys = np.concatenate((np.apply_along_axis(np.concatenate, 0, self.train_dataset.y),
+                             np.apply_along_axis(np.concatenate, 0, self.val_dataset.y),
+                             np.apply_along_axis(np.concatenate, 0, self.test_dataset.y)), axis=0)
         counts = np.unique(ys, return_counts=True)[1]
-        if self.config.OUT_SIZE < 3:
+        if self.config.num_classes < 3:
             # For binary predictions set only positive weight
             self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
             # For binary predictions have to convert class to float
-            self.train_dataset.ys = self.train_dataset.ys.astype(np.float16)
-            self.val_dataset.ys = self.val_dataset.ys.astype(np.float16)
-            self.test_dataset.ys = self.test_dataset.ys.astype(np.float16)
+            # apply to every array inside the y array
+            self.train_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.train_dataset.y)
+            self.val_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.val_dataset.y)
+            self.test_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.test_dataset.y)
         else:
-            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.OUT_SIZE)], dtype=torch.float32)
+            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.num_classes)], dtype=torch.float32)
 
         
     def train_dataloader(self):
