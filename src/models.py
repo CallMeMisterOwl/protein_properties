@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 from torch import nn
-from torchmetrics import Accuracy, F1Score
+from torchmetrics import Accuracy, BinaryF1Score, MulticlassF1Score
     
 
 class SASABaseline(pl.LightningModule):
@@ -36,8 +36,8 @@ class SASABaseline(pl.LightningModule):
         
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss)
-        self.log("train_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
-        self.log("train_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True)
         return loss
     
     def on_train_epoch_end(self) -> None:
@@ -54,8 +54,8 @@ class SASABaseline(pl.LightningModule):
         print(mask)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
-        self.log("val_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
-        self.log("val_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True)
 
         return loss
     
@@ -66,8 +66,8 @@ class SASABaseline(pl.LightningModule):
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss)
-        self.log("test_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
-        self.log("test_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True)
         return loss
     
     def _configure_optimizer(self, optim_config = None):
@@ -86,6 +86,11 @@ class SASABaseline(pl.LightningModule):
         optimizer = self._configure_optimizer()
         return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
     
+    def _accuracy(self, y_hat, y):
+        if self.num_classes == 2:
+            return BinaryF1Score(y_hat, y)
+        return ("F1", MulticlassF1Score(y_hat, y, num_classes=self.num_classes))
+
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
             return self.loss_fn(y_hat, y, self.class_weights)
