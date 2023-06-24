@@ -197,8 +197,6 @@ class SASADataModule(pl.LightningDataModule):
         
         self.train_dataset = SASADataset("train", self.config)
         self.val_dataset = SASADataset("val", self.config)
-
-    
         self.test_dataset = SASADataset("test", self.config)
 
         if self.config.num_classes < 3:
@@ -240,7 +238,7 @@ class SASADataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=True, num_workers=self.config.num_workers)
 
-    def val_dataloader(self):
+    def validation_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
 
     def test_dataloader(self):
