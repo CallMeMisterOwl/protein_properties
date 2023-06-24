@@ -30,7 +30,8 @@ class SASABaseline(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss)
@@ -43,7 +44,8 @@ class SASABaseline(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
@@ -54,7 +56,8 @@ class SASABaseline(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss)
