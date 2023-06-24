@@ -52,7 +52,6 @@ class SASABaseline(pl.LightningModule):
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
         for t in self._accuracy(y_hat[mask], y[mask]):
-            print(t)
             self.log(f"val_{t[0]}", t[1], on_epoch=True)
 
         return loss
