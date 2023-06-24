@@ -1,0 +1,16 @@
+# For more options, check out:
+# https://www.ibm.com/support/knowledgecenter/en/SSWRJV_10.1.0/lsf_command_ref/bsub.yaml.1.html
+io:
+    cwd: /mnt/project/hasler/domain_pred
+    tty: ''
+limit:
+    coreLimit: 8
+    runtimeLimit: 4:00
+    memLimit: 12G!
+resource:
+    gpu: num=1/task:mode=shared:gmem=8G:j_exclusive=no:gpack=yes
+
+properties:
+    queueName: mid-end-normal
+    jobName: test_sasa_baseline
+command: jupyter lab --no-browser --port 6613 --ip=0.0.0.0
