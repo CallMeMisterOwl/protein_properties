@@ -7,3 +7,4 @@ src/data/__pycache__
 test/__pycache__
 test.ipynb
 
+data/sasa/sasaembeddings.h5

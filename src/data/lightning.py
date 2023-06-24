@@ -13,7 +13,9 @@ from tqdm import tqdm
 from .fasta import Fasta
 
 # I love copilot <3
-hoa_tien = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "Y": 255, "V": 165}
+# substituted O for K
+# substituted U for C
+hoa_tien = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "X": 180,"Y": 255, "V": 165, "U": 148, "O": 230}
 
 @dataclass
 class SASADataConfig:
@@ -127,14 +129,18 @@ class SASADataset(Dataset):
             # vespa replaces "-" with "_" in the ids -.-
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             X.append(e)
-        self.X = np.array(X)
-        self.y = np.array(y)
+        self.X = np.array(X, dtype=object)
+        self.y = np.array(y, dtype=object)
         np.save(str(self.np_path / f"{set}_X.npy"), self.X)
         np.save(str(self.np_path / f"{set}_y_c{self.num_classes}.npy"), self.y)
         
     def get_relative_sa(self, seq, sasa):
         sasa = np.array(sasa)
-        hoa = self.to_rsa(np.array(list(seq)))
+        try:
+            hoa = self.to_rsa(np.array(list(seq)))
+        except TypeError:
+            print(f"No max SA value for the residue {set(list(seq)).difference(hoa_tien.keys())}")
+            raise
         return sasa / hoa
 
     def __getitem__(self, idx):
