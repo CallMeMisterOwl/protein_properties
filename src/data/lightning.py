@@ -199,7 +199,7 @@ class SASADataModule(pl.LightningDataModule):
             self.val_dataset = SASADataset("val", self.config)
 
         elif stage == "test" or stage is None:
-        self.test_dataset = SASADataset("test", self.config)
+            self.test_dataset = SASADataset("test", self.config)
 
         if self.config.num_classes < 3:
             # For binary predictions have to convert class to float
