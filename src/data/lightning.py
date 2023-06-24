@@ -194,25 +194,38 @@ class SASADataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.prepare_data()
-        self.train_dataset = SASADataset("train", self.config)
-        self.val_dataset = SASADataset("val", self.config)
+        if stage == "fit" or stage is None:
+            self.train_dataset = SASADataset("train", self.config)
+            self.val_dataset = SASADataset("val", self.config)
+
+        elif stage == "test" or stage is None:
         self.test_dataset = SASADataset("test", self.config)
 
+        if self.config.num_classes < 3:
+            # For binary predictions have to convert class to float
+            # apply to every array inside the y array
+            self.train_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.train_dataset.y) if self.train_dataset.y is not None else None
+            self.val_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.val_dataset.y) if self.val_dataset.y is not None else None
+            self.test_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.test_dataset.y) if self.test_dataset.y is not None else None
+        
+        if (Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt").exists():
+            self.class_weights = torch.load(Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt")
+            return
+        
         # calculate class weights for the loss function
         ys = np.concatenate((np.apply_along_axis(np.concatenate, 0, self.train_dataset.y),
                              np.apply_along_axis(np.concatenate, 0, self.val_dataset.y),
                              np.apply_along_axis(np.concatenate, 0, self.test_dataset.y)), axis=0)
         counts = np.unique(ys, return_counts=True)[1]
+        # check if class weights are already calculated
+
         if self.config.num_classes < 3:
             # For binary predictions set only positive weight
             self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
-            # For binary predictions have to convert class to float
-            # apply to every array inside the y array
-            self.train_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.train_dataset.y)
-            self.val_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.val_dataset.y)
-            self.test_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.test_dataset.y)
         else:
             self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.num_classes)], dtype=torch.float32)
+        torch.save(self.class_weights, self.data_dir / f"class_weights_c{self.config.num_classes}.pt")
+
 
         
     def train_dataloader(self):
