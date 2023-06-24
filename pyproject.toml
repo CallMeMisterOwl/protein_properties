@@ -21,6 +21,7 @@ biotite = "^0.36.1"
 biopython = "^1.81"
 tensorboard = "^2.13.0"
 jupyterlab = "^4.0.2"
+torchmetrics = "^0.11.4"
 
 
 [build-system]

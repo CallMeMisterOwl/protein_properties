@@ -4,14 +4,14 @@ io:
     cwd: /mnt/project/hasler/protein_properties
     tty: ''
 limit: 
-    coreLimit: 8
+    coreLimit: 16
     runtimeLimit: 5:00
-    memLimit: 10G!
+    memLimit: 30G!
 resource:
     gpu: num=1/task:mode=shared:gmem=8G:j_exclusive=no:gpack=yes
 
 properties:
     queueName: mid-end-interactive
-    jobName: interactive_test_job
+    jobName: vespa_emb
     interactivePty: ''
 command: bash --login
