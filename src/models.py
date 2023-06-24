@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 import pytorch_lightning as pl
-import torch.functional as F
+import torch.nn.functional as F
 import torch
 from torch import nn
 from torchmetrics import Accuracy, F1Score

@@ -128,6 +128,7 @@ class SASADataset(Dataset):
             y.append(rsa)
             # vespa replaces "-" with "_" in the ids -.-
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
+            assert len(e) == len(rsa), f"Length of embedding and RSA is not equal for {pid}"
             X.append(e)
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
