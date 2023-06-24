@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 from torch import nn
-from torchmetrics.classification import BinaryF1Score, MulticlassF1Score
+from torchmetrics.functional import binary_f1_score, multiclass_f1_score
     
 
 class SASABaseline(pl.LightningModule):
@@ -85,8 +85,8 @@ class SASABaseline(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         if self.num_classes == 2:
-            return BinaryF1Score(y_hat, y)
-        return ("F1", MulticlassF1Score(y_hat, y, num_classes=self.num_classes))
+            return binary_f1_score(y_hat, y)
+        return ("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
