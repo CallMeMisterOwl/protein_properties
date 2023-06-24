@@ -33,6 +33,7 @@ class SASABaseline(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != -1)
+        
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss)
         self.log("train_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
@@ -47,6 +48,8 @@ class SASABaseline(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != -1)
+        print(y_hat[mask].shape, y[mask].shape)
+        print(y_hat[mask], y[mask])
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
         self.log("val_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
