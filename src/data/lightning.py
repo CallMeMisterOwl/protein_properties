@@ -124,7 +124,8 @@ class SASADataset(Dataset):
             else:
                 raise ValueError("Invalid number of classes!\nValid values are 2, 3 and 10.")
             y.append(rsa)
-            e = embeddings[pid.replace("-", "_")][()]
+            # vespa replaces "-" with "_" in the ids -.-
+            e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             X.append(e)
         self.X = np.array(X)
         self.y = np.array(y)
