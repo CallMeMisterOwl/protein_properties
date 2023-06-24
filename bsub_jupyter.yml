@@ -2,7 +2,8 @@
 # https://www.ibm.com/support/knowledgecenter/en/SSWRJV_10.1.0/lsf_command_ref/bsub.yaml.1.html
 io:
     cwd: /mnt/project/hasler/protein_properties
-    tty: ''
+    outputOverwriteFile: /mnt/project/hasler/protein_properties/stdout.log
+    errorOverwriteFile: /mnt/project/hasler/protein_properties/stderr.log
 limit:
     coreLimit: 8
     runtimeLimit: 4:00
