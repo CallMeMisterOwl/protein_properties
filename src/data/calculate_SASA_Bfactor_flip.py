@@ -78,7 +78,6 @@ def calculate_scores_for_protein(protein: str,
     res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nansum)
 
     # clip so the mask can be recognized by the model
-    # divide by 100 to get smaller values -> better for the model gradient 
     res_sasa = res_sasa.clip(0.00001)
     res_bfactor = res_bfactor.clip(0.00001)
 
