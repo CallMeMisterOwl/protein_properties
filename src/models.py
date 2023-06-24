@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 from torch import nn
-from torchmetrics import Accuracy, BinaryF1Score, MulticlassF1Score
+from torchmetrics.classification import BinaryF1Score, MulticlassF1Score
     
 
 class SASABaseline(pl.LightningModule):
