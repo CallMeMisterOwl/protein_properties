@@ -85,7 +85,7 @@ class SASABaseline(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         if self.num_classes == 2:
-            return binary_f1_score(y_hat, y)
+            return ("F1", binary_f1_score(y_hat, y))
         return ("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))
 
     def _loss(self, y_hat, y):
