@@ -22,7 +22,7 @@ class SASABaseline(pl.LightningModule):
         self.weight_decay = weight_decay
         self.loss_fn = loss_fn
         self.model = nn.Sequential(
-            nn.Linear(1024, self.num_classes),
+            nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1),
         )
 
     def forward(self, x):
@@ -30,11 +30,11 @@ class SASABaseline(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y_hat = self(x).squeeze()
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss)
-        self.log("train_f1", F1(y_hat[mask], y[mask]), on_epoch=True)
+        self.log("train_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
         self.log("train_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
         return loss
     
@@ -47,7 +47,7 @@ class SASABaseline(pl.LightningModule):
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
-        self.log("val_f1", F1(y_hat[mask], y[mask]), on_epoch=True)
+        self.log("val_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
         self.log("val_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
 
         return loss
@@ -58,7 +58,7 @@ class SASABaseline(pl.LightningModule):
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss)
-        self.log("test_f1", F1(y_hat[mask], y[mask]), on_epoch=True)
+        self.log("test_f1", F1Score(y_hat[mask], y[mask]), on_epoch=True)
         self.log("test_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
         return loss
     
