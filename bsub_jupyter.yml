@@ -14,4 +14,4 @@ resource:
 properties:
     queueName: mid-end-normal
     jobName: test_sasa_baseline
-command: poetry run jupyter lab --no-browser --port 6613 --ip=0.0.0.0
+command: jupyter lab --no-browser --port 6613 --ip=0.0.0.0
