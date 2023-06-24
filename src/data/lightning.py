@@ -194,28 +194,28 @@ class SASADataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.prepare_data()
-        if stage == "fit" or stage is None:
-            self.train_dataset = SASADataset("train", self.config)
-            self.val_dataset = SASADataset("val", self.config)
+        
+        self.train_dataset = SASADataset("train", self.config)
+        self.val_dataset = SASADataset("val", self.config)
 
-        elif stage == "test" or stage is None:
-            self.test_dataset = SASADataset("test", self.config)
+    
+        self.test_dataset = SASADataset("test", self.config)
 
         if self.config.num_classes < 3:
-            # For binary predictions have to convert class to float
-            # apply to every array inside the y array
+            
             self.train_dataset.y = np.array([arr.astype(np.float16) 
                                              if arr.dtype != np.float16 
                                              else arr 
-                                             for arr in self.train_dataset.y], dtype=object) if self.train_dataset is not None else None
-            self.val_dataset.y = np.array([arr.astype(np.float16) 
-                                           if arr.dtype != np.float16 
-                                           else arr 
-                                           for arr in self.val_dataset.y], dtype=object) if self.val_dataset is not None else None
-            self.test_dataset.y = np.array([arr.astype(np.float16) 
-                                            if arr.dtype != np.float16 
-                                            else arr 
-                                            for arr in self.test_dataset.y], dtype=object) if self.test_dataset is not None else None
+                                             for arr in self.train_dataset.y], dtype=object)
+            self.val_dataset.y = np.array([arr.astype(np.float16)
+                                           if arr.dtype != np.float16
+                                           else arr
+                                           for arr in self.val_dataset.y], dtype=object)
+            self.test_dataset.y = np.array([arr.astype(np.float16)
+                                            if arr.dtype != np.float16
+                                            else arr
+                                            for arr in self.test_dataset.y], dtype=object)
+            
                     
         if (Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt").exists():
             self.class_weights = torch.load(Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt")
