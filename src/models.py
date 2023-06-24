@@ -85,9 +85,10 @@ class SASABaseline(pl.LightningModule):
         return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
     
     def _accuracy(self, y_hat, y):
+        metrics = []
         if self.num_classes == 2:
-            return ("F1", binary_f1_score(y_hat, y))
-        return ("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))
+            return [("F1", binary_f1_score(y_hat, y))]
+        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
