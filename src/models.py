@@ -48,10 +48,7 @@ class SASABaseline(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != -1)
-        print(y_hat.shape, y.shape)
-        print(y_hat.dtype, y[mask].dtype)
-        print(y_hat, y)
-        print(mask)
+    
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss)
         for t in self._accuracy(y_hat[mask], y[mask]):
