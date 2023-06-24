@@ -62,14 +62,14 @@ class SASABaseline(pl.LightningModule):
         self.log("test_acc", Accuracy(y_hat[mask], y[mask]), on_epoch=True)
         return loss
     
-    def _configure_optimizer(self, optim_config):
-        if optim_config.optimize == "Adam":
-            return torch.optim.Adam(
-                self.parameters(),
-                lr=self.lr,
-                weight_decay=self.weight_decay
-            )
-        raise ValueError(f"Invalid optimizer {optim_config.optimize}. See --help")
+    def _configure_optimizer(self, optim_config = None):
+        
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay
+        )
+        #raise ValueError(f"Invalid optimizer {optim_config.optimize}. See --help")
 
     def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
         return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
