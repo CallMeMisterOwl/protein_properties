@@ -30,7 +30,7 @@ class SASABaseline(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x).squeeze()
+        y_hat = self(x)
         mask = (y != -1)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss)
