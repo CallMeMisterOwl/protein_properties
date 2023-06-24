@@ -204,10 +204,16 @@ class SASADataModule(pl.LightningDataModule):
         if self.config.num_classes < 3:
             # For binary predictions have to convert class to float
             # apply to every array inside the y array
-            self.train_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.train_dataset.y) if self.train_dataset.y is not None else None
-            self.val_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.val_dataset.y) if self.val_dataset.y is not None else None
-            self.test_dataset.y = np.apply_along_axis(lambda x: x.astype(np.float16), 1, self.test_dataset.y) if self.test_dataset.y is not None else None
-        
+            self.train_dataset.y = np.array([arr.astype(np.float16) 
+                                             if arr.dtype != np.float16 
+                                             else arr for arr in self.train_dataset.y]) if self.train_dataset.y is not None else None
+            self.val_dataset.y = np.array([arr.astype(np.float16) 
+                                           if arr.dtype != np.float16 
+                                           else arr for arr in self.val_dataset.y]) if self.val_dataset.y is not None else None
+            self.test_dataset.y = np.array([arr.astype(np.float16) 
+                                            if arr.dtype != np.float16 
+                                            else arr for arr in self.test_dataset.y]) if self.test_dataset.y is not None else None
+                    
         if (Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt").exists():
             self.class_weights = torch.load(Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt")
             return
