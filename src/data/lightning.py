@@ -101,7 +101,7 @@ class SASADataset(Dataset):
             self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
             return
         except:
-            print("Loading data from scratch...")
+            print("Creating numpy arrays...")
 
         fasta = Fasta(self.data_dir / f"{self.split}.o")
         embeddings = h5py.File(self.embedding_path, 'r')
@@ -116,7 +116,7 @@ class SASADataset(Dataset):
                 rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.16, 1, 0)
             # class 0 if below 9%, class 1 between 9% and 36%, class 2 above or equal 36%
             elif self.num_classes == 3:
-                rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.36, 2, np.where(rsa[rsa != -1] >= 0.09, 1, 0))
+                rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.36, 2, np.where(rsa[rsa != -1] >= 0.09, 1, 0)).astype(np.int16)
             # Ten-state class
             elif self.num_classes == 10:
                 # clipping the values to 1.0 -> it can happen that the rsa is larger than 1.0 since the highest observed values per aa are not 100% accurate
