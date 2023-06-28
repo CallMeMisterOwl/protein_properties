@@ -122,7 +122,7 @@ class SASADataset(Dataset):
                 # clipping the values to 1.0 -> it can happen that the rsa is larger than 1.0 since the highest observed values per aa are not 100% accurate
                 # this messes with the formular and produces more than 10 classes -> 
                 rsa[rsa != -1] = np.clip(rsa[rsa != -1], 0.0, 1.0)
-                rsa[rsa != -1] = np.clip(np.sqrt(rsa[rsa != -1] * 100).round(), 0, 9)
+                rsa[rsa != -1] = np.clip(np.trunc(np.sqrt(rsa[rsa != -1] * 100)), 0, 9)
             else:
                 raise ValueError("Invalid number of classes!\nValid values are 2, 3 and 10.")
             y.append(rsa.astype(np.int64))
