@@ -25,7 +25,7 @@ class SASADataConfig:
     data_dir: str = '../../data'
     embedding_path: str = '../../data/sasaembeddings.h5'
     np_path: str = '../../data/'
-    num_classes: Literal[2,3,10] = 3
+    num_classes: Literal[1,2,3,10] = 3
     num_workers: int = 4
 
 
@@ -66,6 +66,7 @@ class DynamicBatchDataLoader(DataLoader):
 
         return batch
 
+# One could implement a more memory efficient version of this, but this is fine for now
 class SASADataset(Dataset):
     """
     SASA dataset class for PyTorch Lightning module data loaders and data module. 
@@ -111,8 +112,11 @@ class SASADataset(Dataset):
             rsa = self.get_relative_sa(seqs[0], seqs[1]).astype(np.float32)
             # masking the 0.0 values, so I can remove them later before calculating the loss
             rsa = np.where(rsa == 0.0, -1, rsa)
+            # Regression task
+            if self.num_classes == 1:
+                pass
             # class 0 if below 16%, class 1 above or equal 16% (as described in the paper Rost and Sander (1994))
-            if self.num_classes == 2:
+            elif self.num_classes == 2:
                 rsa[rsa != -1] = np.where(rsa[rsa != -1] >= 0.16, 1, 0)
             # class 0 if below 9%, class 1 between 9% and 36%, class 2 above or equal 36%
             elif self.num_classes == 3:
