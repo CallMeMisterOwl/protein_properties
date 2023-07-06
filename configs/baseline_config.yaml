@@ -21,7 +21,7 @@ trainer:
   devices: 1
   precision: 16-mixed
   accumulate_grad_batches: 124
-  max_epochs: 40
+  max_epochs: 50
   num_sanity_val_steps: 2
   callbacks:
     - class_path: ModelCheckpoint
