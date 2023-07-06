@@ -91,6 +91,7 @@ class SASADataset(Dataset):
 
         self.X = None
         self.y = None
+        self.pids = None
         self.load_data()
 
     def load_data(self):
@@ -100,6 +101,7 @@ class SASADataset(Dataset):
         try:
             self.X = np.load(str(self.np_path / f"{self.split}_X.npy"), allow_pickle=True)
             self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
+            self.pids = np.load(str(self.np_path / f"{self.split}_pids.npy"), allow_pickle=True)
             return
         except:
             print("Creating numpy arrays...")
@@ -108,6 +110,7 @@ class SASADataset(Dataset):
         embeddings = h5py.File(self.embedding_path, 'r')
         X = []
         y = []
+        pids = []
         for pid, seqs in tqdm(fasta.items()):
             rsa = self.get_relative_sa(seqs[0], seqs[1]).astype(np.float32)
             # masking the 0.0 values, so I can remove them later before calculating the loss
@@ -134,12 +137,15 @@ class SASADataset(Dataset):
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             assert len(e) == len(rsa), f"Length of embedding and RSA is not equal for {pid}"
             X.append(e)
+            pids.append(pid)
 
         
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
+        self.pids = np.array(pids, dtype=object)
         np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
         np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), self.y)
+        np.save(str(self.np_path / f"{self.split}_pids.npy"), self.pids)
         
     def get_relative_sa(self, seq, sasa):
         sasa = np.array(sasa)
@@ -151,7 +157,7 @@ class SASADataset(Dataset):
         return sasa / hoa
 
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+        return self.X[idx], self.y[idx], self.pids[idx]
 
     def __len__(self):
         return len(self.X)
@@ -164,12 +170,14 @@ class SASADataModule(pl.LightningDataModule):
     def __init__(self, config: SASADataConfig):
         super().__init__()
         self.data_dir = Path(config.data_dir)
+        self.np_path = Path(config.np_path)
         self.config = config
 
         self.class_weights = None
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        self.shuffled_ids = None
 
     def prepare_data(self):
         """
@@ -196,10 +204,7 @@ class SASADataModule(pl.LightningDataModule):
         Fasta(sequences=train_dict).write_fasta(self.data_dir / "train.o", overwrite=True)
         Fasta(sequences=val_dict).write_fasta(self.data_dir / "val.o", overwrite=True)
         print("Data preparation done!")
-        # IDs to shuffle
-        """random.shuffle(self.vids["train"])
-        np.save(OUT_PATH / "shuffle", self.vids["train"])"""
-            
+        
 
     def setup(self, stage=None):
         self.prepare_data()
@@ -207,6 +212,24 @@ class SASADataModule(pl.LightningDataModule):
         self.train_dataset = SASADataset("train", self.config)
         self.val_dataset = SASADataset("val", self.config)
         self.test_dataset = SASADataset("test", self.config)
+
+        # Shuffel train data #reproducibility #science
+        
+        # Create an array of indices that correspond to the order of IDs in 'b'
+        if not (self.np_path / "shuffle.npy").exists():
+            self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
+            np.save(self.np_path / "shuffle.npy", self.shuffled_ids)
+        else:
+            self.shuffled_ids = np.load(self.np_path / "shuffle.npy", allow_pickle=True)
+
+        index_mapping = {id: index for index, id in enumerate(self.shuffled_ids)}
+        sorted_indices = np.zeros(len(self.shuffled_ids), dtype=int)
+        for items in index_mapping.items():
+            sorted_indices[items[1]] = np.where(items[0] == self.train_dataset.pids)[0][0]
+        
+        self.train_dataset.X = self.train_dataset.X[sorted_indices]
+        self.train_dataset.y = self.train_dataset.y[sorted_indices]
+        self.train_dataset.pids = self.shuffled_ids
 
         if self.config.num_classes < 3:
             
@@ -224,8 +247,8 @@ class SASADataModule(pl.LightningDataModule):
                                             for arr in self.test_dataset.y], dtype=object)
             
                     
-        if (Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt").exists():
-            self.class_weights = torch.load(Path(self.data_dir) / f"class_weights_c{self.config.num_classes}.pt")
+        if (self.np_path / f"class_weights_c{self.config.num_classes}.pt").exists():
+            self.class_weights = torch.load(self.np_path / f"class_weights_c{self.config.num_classes}.pt")
             return
         
         # calculate class weights for the loss function
@@ -240,12 +263,11 @@ class SASADataModule(pl.LightningDataModule):
             self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
         else:
             self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.num_classes)], dtype=torch.float32)
-        torch.save(self.class_weights, self.data_dir / f"class_weights_c{self.config.num_classes}.pt")
-
+        torch.save(self.class_weights, self.np_path / f"class_weights_c{self.config.num_classes}.pt")
 
         
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=1, shuffle=True, num_workers=self.config.num_workers)
+        return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
