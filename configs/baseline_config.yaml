@@ -1,4 +1,4 @@
-output_path: data/eval #/mnt/project/hasler/domain_pred/results/O_I_S_E-all
+output_path: /mnt/home/hasler/projects/protein_properties/results/sasa/baseline
 HP: False
 model:
   class_path: src.models.SASABaseline
@@ -10,9 +10,9 @@ data:
   class_path: src.data.lightning_sasa.SASADataModule
   init_args:
     config:
-      data_dir: data/sasa #/mnt/home/hasler/projects/protein_properties/data/sasa
-      embedding_path: data/sasa/sasaembeddings.h5 #/mnt/home/hasler/projects/protein_properties/data/sasa/sasaembeddings.h5
-      np_path: data/sasa #/mnt/home/hasler/projects/protein_properties/data/sasa/
+      data_dir: /mnt/home/hasler/projects/protein_properties/data/sasa
+      embedding_path: /mnt/home/hasler/projects/protein_properties/data/sasa/sasaembeddings.h5
+      np_path: /mnt/home/hasler/projects/protein_properties/data/sasa/
       num_workers: 8
       
 
