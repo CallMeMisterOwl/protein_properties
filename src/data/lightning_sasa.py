@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 from sklearn.model_selection import train_test_split
 import torch
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from torch.utils.data import DataLoader, random_split, Dataset
 import h5py
 import numpy as np
@@ -134,6 +134,8 @@ class SASADataset(Dataset):
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             assert len(e) == len(rsa), f"Length of embedding and RSA is not equal for {pid}"
             X.append(e)
+
+        
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
         np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
@@ -194,7 +196,9 @@ class SASADataModule(pl.LightningDataModule):
         Fasta(sequences=train_dict).write_fasta(self.data_dir / "train.o", overwrite=True)
         Fasta(sequences=val_dict).write_fasta(self.data_dir / "val.o", overwrite=True)
         print("Data preparation done!")
-            
+        # IDs to shuffle
+        """random.shuffle(self.vids["train"])
+        np.save(OUT_PATH / "shuffle", self.vids["train"])"""
             
 
     def setup(self, stage=None):
@@ -243,7 +247,7 @@ class SASADataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=True, num_workers=self.config.num_workers)
 
-    def validation_dataloader(self):
+    def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
 
     def test_dataloader(self):
