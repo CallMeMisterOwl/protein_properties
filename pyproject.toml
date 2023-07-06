@@ -8,12 +8,10 @@ packages = [{include = "protein_properties"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pytorch-lightning = "^2.0.2"
 numpy = "^1.24.3"
 pandas = "^2.0.1"
 wandb = "^0.15.2"
 scikit-learn = "^1.2.2"
-jsonargparse = "^4.21.0"
 h5py = "^3.8.0"
 jupyter = "^1.0.0"
 seaborn = "^0.12.2"
@@ -22,6 +20,9 @@ biopython = "^1.81"
 tensorboard = "^2.13.0"
 jupyterlab = "^4.0.2"
 torchmetrics = "^0.11.4"
+lightning = "^2.0.4"
+jsonargparse = {version = "4.17.0", extras = ["signatures"]}
+pytorch-lightning = {extras = ["extras"], version = "^2.0.4"}
 
 
 [build-system]
