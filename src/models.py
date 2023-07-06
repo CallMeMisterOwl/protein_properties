@@ -28,7 +28,7 @@ class SASABaseline(pl.LightningModule):
         self.output_path = kwargs.get("output_path", ".")
 
         self.hparams["Modeltype"] = "SASABaseline"
-        self.save_hyperparameters("num_classes", "class_weights", "lr", "weight_decay")
+        self.save_hyperparameters()
         
 
     def forward(self, x):
