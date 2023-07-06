@@ -12,3 +12,4 @@ data/sasa/*.npy
 logs/*
 wandb/
 protein_properties/
+data/sasa/class_weights_*.pt
