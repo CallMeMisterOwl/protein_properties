@@ -35,7 +35,7 @@ class SASABaseline(pl.LightningModule):
         return self.model(x)
     
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != -1)
@@ -47,7 +47,7 @@ class SASABaseline(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != -1)
@@ -59,7 +59,7 @@ class SASABaseline(pl.LightningModule):
         return loss
     
     def test_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
         mask = (y != -1)
