@@ -20,7 +20,7 @@ trainer:
   accelerator: gpu
   devices: 1
   precision: 16-mixed
-  accumulate_grad_batches: 124
+  accumulate_grad_batches: 64
   max_epochs: 50
   num_sanity_val_steps: 2
   callbacks:
