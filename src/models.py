@@ -100,4 +100,276 @@ class SASABaseline(pl.LightningModule):
             return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
         return F.cross_entropy(y_hat, y, weight=self.class_weights)
     
+
+class SASALSTM(pl.LightningModule):
+
+    def __init__(self, 
+                 num_classes: Literal[2, 3, 10] = 3,
+                 class_weights: torch.Tensor = None,
+                 lr: float = 1e-3,
+                 weight_decay: float = 0.0,
+                 hidden: int = 20,
+                 num_layers: int = 1,
+                 dropout: float = 0.0,
+                 **kwargs):
+        super().__init__()
+        self.num_classes = num_classes
+        self.class_weights = class_weights
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.loss_fn = None
+        self.num_layers = num_layers
+
+        self.lr_scheduler = kwargs.get("lr_scheduler", None)
+        self.output_path = kwargs.get("output_path", ".")
+        
+        self.lstm_layer = nn.LSTM(input_size=1024,
+                               hidden_size=hidden,
+                               bidirectional=True,
+                               num_layers=num_layers,
+                               dropout=dropout)
+
+        # HIDDEN times 2 because of bidirectionality
+        self.out = nn.Linear(hidden*2, self.num_classes if self.num_classes > 2 else 1)
+
+        
+        self.dropout = nn.Dropout(dropout) if self.num_layers == 1 else nn.Identity() 
+        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax()
+        self.hparams["Modeltype"] = "SASALSTM"
+        self.save_hyperparameters()
+
+
+    def forward(self, x):
+        lstm_h, (_, _) = self.lstm_layer(x)
+        lstm_h = self.dropout(lstm_h)
+        # applies the linear layer to every LSTM time step
+        return torch.stack([self.out(pre) for pre in lstm_h])#, torch.stack([self.uncertainty(pre) for pre in lstm_h])
+
+    def training_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
+        
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
     
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        mask = (y != -1)
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+
+    """def test_epoch_end(self, outputs):
+        # Unpack outputs
+        outputs = list(map(list, zip(*outputs)))
+        preds = np.concatenate(outputs[0])
+        ys = np.concatenate(outputs[1])
+        reliability = np.concatenate(outputs[2])
+        if self.num_classes < 3:
+            # For binary predictions use threshold of 0.5
+            pred_classes = (preds >= 0.5).astype(int)
+        else:
+            # For multiclass predictions take index of max
+            pred_classes = np.argmax(preds, axis=1)
+
+        # Save test predictions to csv
+        self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys, reliability),
+            columns=["Score", "Pred_class", "Real_class", "Reliability_Score"])
+        self.test_preds.to_csv(self.out_path / f"{self.datset}_LSTM_test_preds.tsv",
+            sep='\t', index=False)
+    """
+    def _configure_optimizer(self, optim_config = None):
+        
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay
+        )
+
+    def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
+
+    def configure_optimizers(self):
+        optimizer = self._configure_optimizer()
+        return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
+
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        if self.num_classes == 2:
+            return [("Accuracy", binary_accuracy(y_hat, y))]
+        return [("Accuracy", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+
+    def _loss(self, y_hat, y):
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y, self.class_weights)
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
+        return F.cross_entropy(y_hat, y, weight=self.class_weights)
+
+class SASACNN(pl.LightningModule):
+    def __init__(self, 
+                 num_classes: Literal[2, 3, 10] = 3,
+                 class_weights: torch.Tensor = None,
+                 lr: float = 1e-3,
+                 weight_decay: float = 0.0,
+                 wing: int = 15,
+                 num_lin_layers: int = 2,
+                 size_lin_layers: list = [256, 152],
+                 dropout: float = 0.5,
+                 **kwargs):
+        super().__init__()
+        assert num_lin_layers == len(size_lin_layers)
+        self.num_classes = num_classes
+        self.class_weights = class_weights
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.loss_fn = None
+
+        self.lr_scheduler = kwargs.get("lr_scheduler", None)
+        self.output_path = kwargs.get("output_path", ".")
+        
+        self.cnn = nn.Conv1d(
+            1024,
+            1024,
+            wing * 2 + 1,
+            padding=wing,
+            groups=1024
+        )
+        # create linear layers the first one has to have 1024 input features and the last one has to have num_classes output features
+        # subsequent layers are defined by size_lin_layers
+        # add relu and dropout after each layer
+        self.linear_layers = nn.Sequential(
+            nn.Linear(1024, size_lin_layers[0]),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            *[nn.Sequential(
+                nn.Linear(size_lin_layers[i], size_lin_layers[i+1]),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            ) for i in range(num_lin_layers - 1)],
+            nn.Linear(size_lin_layers[-1], num_classes if num_classes > 2 else 1)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax()
+        self.hparams["Modeltype"] = "SASACNN"
+        self.save_hyperparameters()
+
+    def forward(self, x):
+        # TODO remove this
+        out = self.cnn(x.permute(0, 2, 1))
+        #out = nn.ReLU()(out)
+        out = F.dropout(out, p=0.2, training=self.training)
+        # applies the linear layer to every CNN step
+        return self.linear_layers(out.permute(0, 2, 1))
+        
+    def training_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
+        
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("train_loss", loss, on_step=False, on_epoch=True, batch_size=32)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
+    
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        mask = (y != -1)
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+
+    """def test_epoch_end(self, outputs):
+        # Unpack outputs
+        outputs = list(map(list, zip(*outputs)))
+        preds = np.concatenate(outputs[0])
+        ys = np.concatenate(outputs[1])
+        reliability = np.concatenate(outputs[2])
+        if self.num_classes < 3:
+            # For binary predictions use threshold of 0.5
+            pred_classes = (preds >= 0.5).astype(int)
+        else:
+            # For multiclass predictions take index of max
+            pred_classes = np.argmax(preds, axis=1)
+
+        # Save test predictions to csv
+        self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys, reliability),
+            columns=["Score", "Pred_class", "Real_class", "Reliability_Score"])
+        self.test_preds.to_csv(self.out_path / f"{self.datset}_LSTM_test_preds.tsv",
+            sep='\t', index=False)
+    """
+    def _configure_optimizer(self, optim_config = None):
+        
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay
+        )
+
+    def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
+
+    def configure_optimizers(self):
+        optimizer = self._configure_optimizer()
+        return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
+
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        if self.num_classes == 2:
+            return [("Accuracy", binary_accuracy(y_hat, y))]
+        return [("Accuracy", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+
+    def _loss(self, y_hat, y):
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y, self.class_weights)
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
+        return F.cross_entropy(y_hat, y, weight=self.class_weights)

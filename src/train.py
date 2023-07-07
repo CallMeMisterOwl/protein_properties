@@ -25,6 +25,7 @@ def main():
     cli.config.output_path.mkdir(parents=True, exist_ok=True)
 
     cli.trainer.logger = WandbLogger(project="protein_properties", log_model=True)
+    cli.model.class_weights = cli.datamodule.class_weights
     cli.trainer.fit(model=cli.model, datamodule=cli.datamodule)
     # get validation scores for the best model
     cli.trainer.validate(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())
