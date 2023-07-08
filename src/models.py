@@ -296,7 +296,7 @@ class SASACNN(pl.LightningModule):
         mask = (y != -1)
         
         loss = self._loss(y_hat[mask], y[mask])
-        self.log("train_loss", loss, on_step=False, on_epoch=True, batch_size=32)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
         return loss
