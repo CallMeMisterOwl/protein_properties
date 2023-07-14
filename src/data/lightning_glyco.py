@@ -67,12 +67,20 @@ class GroupedBatchSampler(BatchSampler):
 class GlycoDataModule(pl.LightningDataModule):
     def __init__(self, config: GlycoDataConfig) -> None:
         super().__init__()
+        super().__init__()
+        self.data_dir = Path(config.data_dir)
+        self.np_path = Path(config.np_path)
+        self.config = config
+
+        self.class_weights = None
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        
         self.O_test_dataset = None
         self.N_test_dataset = None
-        self.config = config
+        self.class_weights = None
+        self.shuffled_ids = None
         
 
     def prepare_data(self):
