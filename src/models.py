@@ -432,7 +432,7 @@ class GlycoModel(pl.LightningModule):
                  weight_decay: float = 0.0,
                  **kwargs):
         super().__init__()
-        self.num_classes = num_classes
+        self.num_classes = 3
         self.class_weights = class_weights
         self.lr = lr
         self.weight_decay = weight_decay
