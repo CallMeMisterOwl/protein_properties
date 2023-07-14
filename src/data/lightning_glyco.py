@@ -210,15 +210,16 @@ class GlycoDataset(Dataset):
         X = []
         y = []
         protein_ids = []
-        classes = np.array(self.config.classes.keys())
+        classes = np.array(list(self.config.classes.keys()))
         for pid, seqs in tqdm(fasta.items()):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes)
             try:
-                embeddings = embeddings[pid][()]
+                embedding = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             except:
                 print(f"Protein {pid}  not found in embeddings!")
-            X.append(embeddings[samples])
+                continue
+            X.append(embedding[samples])
             y.append(labels[samples])
             protein_ids.append(np.repeat(pid, len(samples)))
 
