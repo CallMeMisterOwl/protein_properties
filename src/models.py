@@ -476,10 +476,9 @@ class GlycoModel(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != -1)
-        loss = self._loss(y_hat[mask], y[mask])
+        loss = self._loss(y_hat, y)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
-        for t in self._accuracy(y_hat[mask], y[mask]):
+        for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         return loss
     
