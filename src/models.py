@@ -193,7 +193,7 @@ class SASALSTM(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = self._configure_optimizer()
-        return [optimizer], [{"scheduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
+        return [optimizer], [{"scheduler": self._configure_scheduler(optimizer), "interval": "epoch", "monitor": "val_loss"}]
 
     def _accuracy(self, y_hat, y):
         metrics = []
