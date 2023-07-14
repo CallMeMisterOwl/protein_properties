@@ -1,4 +1,4 @@
-output_path: /mnt/project/hasler/protein_properties/results/sasa/lstm
+output_path: /mnt/project/hasler/protein_properties/results/sasa/cnn
 HP: False
 model:
   class_path: src.models.SASACNN
@@ -33,5 +33,11 @@ trainer:
       init_args:
         monitor: val_loss
         mode: min
-        min_delta: 0.01 #DEBUG 9999
-        patience: 3 #DEBUG 1
+        min_delta: 0.001 #DEBUG 9999
+        patience: 5 #DEBUG 1
+    - class_path: LearningRateMonitor
+      init_args:
+        logging_interval: step
+    - class_path: src.callbacks.LogPredictionCallback
+      init_args:
+        out_path: /mnt/project/hasler/protein_properties/results/sasa/cnn
