@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.metrics import confusion_matrix
-from pytorch_lightning.callbacks import Callback
+from lightning.pytorch.callbacks. import Callback
 import wandb
 
 
