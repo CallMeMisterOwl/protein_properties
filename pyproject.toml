@@ -24,6 +24,7 @@ lightning = "^2.0.4"
 jsonargparse = {version = "4.17.0", extras = ["signatures"]}
 pytorch-lightning = {extras = ["extras"], version = "^2.0.4"}
 captum = "^0.6.0"
+statsmodels = "^0.14.0"
 
 
 [build-system]
