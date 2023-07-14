@@ -181,7 +181,7 @@ class GlycoDataModule(pl.LightningDataModule):
 # one for the baseline -> simply use the embedding of the glyco site 
 # one for the baseline + dialated mean embedding -> use the embedding of the glyco site and the dialated mean embedding e.g. 101010N010101
 class GlycoDataset(Dataset):
-    def __init__(self, config: GlycoDataConfig, split: str) -> None:
+    def __init__(self, split: str, config: GlycoDataConfig) -> None:
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
