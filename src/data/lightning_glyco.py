@@ -192,7 +192,7 @@ class GlycoDataset(Dataset):
 
         self.X = None
         self.y = None
-        self.protein_ids = None
+        self.pids = None
         self.load_data()
     
     def load_data(self):
@@ -223,9 +223,12 @@ class GlycoDataset(Dataset):
             y.append(labels[samples])
             protein_ids.append(np.repeat(pid, len(samples)))
 
-        np.save(str(self.np_path / f"{self.split}_X.npy"), X)
-        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), y)
-        np.save(str(self.np_path / f"{self.split}_protein_ids.npy"), protein_ids)
+        self.X = np.array(X, dtype=object)
+        self.y = np.array(y, dtype=object)
+        self.pids = np.array(pids, dtype=object)
+        np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
+        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), self.y)
+        np.save(str(self.np_path / f"{self.split}_pids.npy"), self.pids)
     
     def __len__(self):
         return len(self.X)
