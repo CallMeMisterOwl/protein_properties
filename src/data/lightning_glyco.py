@@ -91,7 +91,7 @@ class GlycoDataModule(pl.LightningDataModule):
         if not self.data_dir.exists():
             raise FileNotFoundError("The data directory that was provided does not exist! Please download the data first!")
         
-        if not (self.data_dir / "train.o").exists() or not (self.data_dir / "val.o").exists() or not (self.data_dir / "test.o").exists():
+        if not (self.data_dir / "train.o").exists() or not (self.data_dir / "val.o").exists() or not (self.data_dir / "O_test.o").exists():
             raise FileNotFoundError("The data directory that was provided is missing the .o files! Please download the data first!")
         
 
