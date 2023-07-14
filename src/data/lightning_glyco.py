@@ -183,7 +183,6 @@ class GlycoDataModule(pl.LightningDataModule):
 class GlycoDataset(Dataset):
     def __init__(self, config: GlycoDataConfig, split: str) -> None:
         super().__init__()
-        self.to_class = {"X"}
         self.split = split
         self.data_dir = Path(config.data_dir)
         self.embedding_path = config.embedding_path

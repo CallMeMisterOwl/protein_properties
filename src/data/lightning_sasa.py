@@ -73,13 +73,7 @@ class SASADataset(Dataset):
     Uses relative solvent accessibility (RSA) as labels.
     """
     def __init__(self, split: Literal["train", "test", "val", "blind_test"], config: SASADataConfig):
-        """
-        
-        :param split: str
-            Split to use. One of 'train', 'val', 'test'
-        :param config: SASADataConfig
-            Data configuration
-        """
+    
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
