@@ -17,7 +17,7 @@ class GlycoDataConfig():
     np_path: str = '../../data/'
     num_workers: int = 4
     batch_size: int = 32
-    classes = {"T": 0, "N": 1, "0": 2}
+    classes = {"T": 0, "N": 1, "O": 2}
 
 
 import torch
@@ -214,7 +214,10 @@ class GlycoDataset(Dataset):
         for pid, seqs in tqdm(fasta.items()):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes)
-            embeddings = embeddings[pid][()]
+            try:
+                embeddings = embeddings[pid][()]
+            except:
+                print(f"Protein {pid}  not found in embeddings!")
             X.append(embeddings[samples])
             y.append(labels[samples])
             protein_ids.append(np.repeat(pid, len(samples)))
