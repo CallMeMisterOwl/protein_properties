@@ -88,8 +88,8 @@ class SASABaseline(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("Accuracy", binary_accuracy(y_hat, y))]
-        return [("Accuracy", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+            return [("F1", binary_F1_score(y_hat, y))]
+        return [("F1", multiclass_F1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -100,7 +100,6 @@ class SASABaseline(pl.LightningModule):
             return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
         return F.cross_entropy(y_hat, y, weight=self.class_weights)
     
-
 class SASALSTM(pl.LightningModule):
 
     def __init__(self, 
@@ -153,7 +152,7 @@ class SASALSTM(pl.LightningModule):
         mask = (y != -1)
         
         loss = self._loss(y_hat[mask], y[mask])
-        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
         return loss
@@ -219,8 +218,8 @@ class SASALSTM(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("Accuracy", binary_accuracy(y_hat, y))]
-        return [("Accuracy", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+            return [("F1", binary_F1_score(y_hat, y))]
+        return [("F1", multiclass_F1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -322,28 +321,14 @@ class SASACNN(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        return loss
-
-
-    """def test_epoch_end(self, outputs):
-        # Unpack outputs
-        outputs = list(map(list, zip(*outputs)))
-        preds = np.concatenate(outputs[0])
-        ys = np.concatenate(outputs[1])
-        reliability = np.concatenate(outputs[2])
         if self.num_classes < 3:
-            # For binary predictions use threshold of 0.5
-            pred_classes = (preds >= 0.5).astype(int)
+            # For binary predictions flatten the array
+            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         else:
-            # For multiclass predictions take index of max
-            pred_classes = np.argmax(preds, axis=1)
-
-        # Save test predictions to csv
-        self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys, reliability),
-            columns=["Score", "Pred_class", "Real_class", "Reliability_Score"])
-        self.test_preds.to_csv(self.out_path / f"{self.datset}_LSTM_test_preds.tsv",
-            sep='\t', index=False)
-    """
+            # For multiclass predictions don't
+            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+        
+    
     def _configure_optimizer(self, optim_config = None):
         
         return torch.optim.Adam(
@@ -362,8 +347,8 @@ class SASACNN(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("Accuracy", binary_accuracy(y_hat, y))]
-        return [("Accuracy", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+            return [("F1", binary_F1_score(y_hat, y))]
+        return [("F1", multiclass_F1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -373,3 +358,91 @@ class SASACNN(pl.LightningModule):
         elif self.num_classes == 2:
             return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
         return F.cross_entropy(y_hat, y, weight=self.class_weights)
+
+class SASADummyModel(pl.LightningModule):
+    def __init__(self, num_classes, label_distribution: torch.Tensor = None):
+        super().__init__()
+        self.num_classes = num_classes
+        self.label_distribution = label_distribution if label_distribution is not None else None
+        
+
+    def forward(self, x):
+        num_samples = x.shape[1]
+
+        if self.label_distribution is not None:
+            if self.num_classes > 2:
+         # Randomly draw indices based on label distribution
+                torch.use_deterministic_algorithms(False)
+                label_indices = torch.multinomial(self.label_distribution, num_samples, replacement=True)
+                torch.use_deterministic_algorithms(True)
+                
+                # Convert label indices to one-hot representation
+                logits = torch.zeros(num_samples, self.num_classes if self.num_classes != 2 else 1)
+                logits[torch.arange(num_samples), label_indices] = 1.0
+            else:
+                
+                # Binary classification
+                p = self.label_distribution.item()  # Probability of positive class
+                logits = torch.empty(num_samples, 1).uniform_(0, 1)
+                logits = torch.where(logits >= p, 1.0, 0.0)
+        else:
+            # Generate random logits
+            logits = torch.randn(num_samples, self.num_classes if self.num_classes != 2 else 1)
+
+        return logits.to(x.device)
+
+    def training_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
+        
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != -1)
+    
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        mask = (y != -1)
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        if self.num_classes == 2:
+            return [("F1", binary_F1_score(y_hat, y))]
+        return [("F1", multiclass_F1_score(y_hat, y, num_classes=self.num_classes))]
+    
+    def _loss(self, y_hat, y):
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y)
+        return F.cross_entropy(y_hat, y)
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.parameters(),
+        )
+    
+
+ 
