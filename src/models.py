@@ -238,7 +238,7 @@ class SASACNN(pl.LightningModule):
             1024,
             wing * 2 + 1,
             padding=wing * dilation,
-            groups=1024
+            groups=1024,
             dilation=dilation
         )
         # create linear layers the first one has to have 1024 input features and the last one has to have num_classes output features
