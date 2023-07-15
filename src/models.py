@@ -220,6 +220,7 @@ class SASACNN(pl.LightningModule):
                  num_lin_layers: int = 2,
                  size_lin_layers: list = [256, 152],
                  dropout: float = 0.5,
+                 dilation: int = 1,
                  **kwargs):
         super().__init__()
         assert num_lin_layers == len(size_lin_layers)
@@ -236,8 +237,9 @@ class SASACNN(pl.LightningModule):
             1024,
             1024,
             wing * 2 + 1,
-            padding=wing,
+            padding=wing * dilation,
             groups=1024
+            dilation=dilation
         )
         # create linear layers the first one has to have 1024 input features and the last one has to have num_classes output features
         # subsequent layers are defined by size_lin_layers
