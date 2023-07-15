@@ -3,7 +3,7 @@ import lightning.pytorch as pl
 from pathlib import Path
 
 from torch import nn
-from src.utils import seed_all
+from src.utils import seed_all, kaiming_init
 from pytorch_lightning.loggers import WandbLogger
 
 import wandb
@@ -26,6 +26,7 @@ def main():
 
     cli.trainer.logger = WandbLogger(project="protein_properties", log_model=True)
     cli.model.class_weights = cli.datamodule.class_weights
+    kaiming_init(cli.model)
     cli.trainer.fit(model=cli.model, datamodule=cli.datamodule)
     # get validation scores for the best model
     cli.trainer.validate(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())

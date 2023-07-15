@@ -2,7 +2,7 @@ import random
 import numpy as np
 from pytorch_lightning import seed_everything
 import torch  
-
+import math
 
 def seed_all(seed=13):
     """
@@ -73,3 +73,12 @@ def align_sequences_nw(x: str, y: str, match=2, mismatch=100, gap=1):
     rx = ''.join(rx)[::-1]
     ry = ''.join(ry)[::-1]
     return [rx, ry]
+
+def kaiming_init(model):
+    for name, param in model.named_parameters():
+        if name.endswith(".bias"):
+            param.data.fill_(0)
+        elif name.startswith("layers.0"):  # The first layer does not have ReLU applied on its input
+            param.data.normal_(0, 1 / math.sqrt(param.shape[1]))
+        else:
+            param.data.normal_(0, math.sqrt(2) / math.sqrt(param.shape[1]))
