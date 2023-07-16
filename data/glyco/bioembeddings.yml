@@ -1,0 +1,18 @@
+global:
+  # The results will end up in this folder
+  prefix: glyco_emb
+  # Replace this with the path or url to your sequences
+  sequences_file: /mnt/home/hasler/project/protein_properties/data/glyco/rr_wscores_and_config_glyco_all.fasta
+embed_cath_20_t5:
+  type: embed
+  protocol: prottrans_t5_xl_u50
+  # For T5, the half precision (fp16) model is faster at the same quality
+  half_precision_model: true
+  # In this case, we want per-protein embeddings
+  reduce: False
+  # Drop per-protein embeddings
+  # Note: If you don't do this (or set it to false) you'll use lots of storage
+  # As a rule of thumb, 1000 sequences take about 1GB
+  discard_per_amino_acid_embeddings: False
+  # Set the penultimate part to your embedder
+  model_directory: /mnt/project/bio_embeddings/models/prottrans_t5_xl_u50/model_directory
