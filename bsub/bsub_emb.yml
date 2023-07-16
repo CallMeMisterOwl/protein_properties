@@ -8,7 +8,7 @@ limit:
     runtimeLimit: 12:00
     memLimit: 50G!
 resource:
-    gpu: num=1/task:mode=shared:gmem=10G:j_exclusive=no:gpack=yes
+    gpu: num=1/task:mode=shared:gmem=12G:j_exclusive=no:gpack=yes
 
 ## Uncommment the following to schedule a job to start at a specific time (YYYY:MM:DD:HH:M)
 #schedule:
