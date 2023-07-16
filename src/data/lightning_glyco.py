@@ -209,7 +209,7 @@ class GlycoDataset(Dataset):
         embeddings = h5py.File(self.embedding_path, 'r')
         X = []
         y = []
-        protein_ids = []
+        pids = []
         classes = np.array(list(self.config.classes.keys()))
         for pid, seqs in tqdm(fasta.items()):
             labels = np.array(list(seqs[1]))
@@ -221,7 +221,7 @@ class GlycoDataset(Dataset):
                 continue
             X.append(embedding[samples])
             y.append(labels[samples])
-            protein_ids.append(np.repeat(pid, len(samples)))
+            pids.append(np.repeat(pid, len(samples)))
 
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)

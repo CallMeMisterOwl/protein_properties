@@ -200,3 +200,8 @@ class Fasta:
     def items(self):
         return self.sequences.items()
     
+    def pop(self, key):
+        return self.sequences.pop(key)
+    
+    def remove(self, key):
+        return self.sequences.remove(key)
