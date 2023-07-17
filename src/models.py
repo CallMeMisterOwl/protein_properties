@@ -73,12 +73,12 @@ class SASABaseline(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
         else:
-            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
     
     def _configure_optimizer(self, optim_config = None):
         
@@ -196,12 +196,12 @@ class SASALSTM(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
         else:
-            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
 
     def _configure_optimizer(self, optim_config = None):
         
@@ -334,14 +334,13 @@ class SASACNN(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
         else:
-            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         
-    
     def _configure_optimizer(self, optim_config = None):
         
         return torch.optim.Adam(
@@ -503,7 +502,9 @@ class GlycoModel(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()        
         loss = self._loss(y_hat, y)
-        print(loss)
+        if len(y_hat.shape) == 1:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
             self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
@@ -514,6 +515,9 @@ class GlycoModel(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         loss = self._loss(y_hat, y)
+        if len(y_hat.shape) == 1:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
             self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
@@ -523,19 +527,16 @@ class GlycoModel(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != self.mask_value)
-        loss = self._loss(y_hat[mask], y[mask])
+        
+        loss = self._loss(y_hat, y)
+        if len(y_hat.shape) == 1:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
-        for t in self._accuracy(y_hat[mask], y[mask]):
+        for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        if self.num_classes < 3:
-            # For binary predictions flatten the array
-            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
-        elif self.num_classes > 2:
-            # For multiclass predictions don't
-            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
-        else:
-            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+        return self.sigmoid(y_hat).cpu().numpy().flatten(), y.cpu().numpy()
+        
     
     def _configure_optimizer(self, optim_config = None):
         
@@ -555,14 +556,10 @@ class GlycoModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if len(y_hat.shape ) != 2:
-            y_hat = y_hat.unsqueeze(0)
-            y = y.unsqueeze(0)
         if self.num_classes == 2:
-            return [("F1", binary_f1_score(y_hat, y))]
-        if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y))]
-        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("F1", binary_f1_score(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if len(y_hat.shape ) != 2:
