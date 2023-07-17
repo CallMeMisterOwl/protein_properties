@@ -4,7 +4,8 @@ import lightning.pytorch as pl
 import torch.nn.functional as F
 import torch
 from torch import nn
-from torchmetrics.functional.classification import binary_f1_score, multiclass_f1_score, binary_accuracy, multiclass_accuracy
+from torchmetrics.functional.regression import pearson_corrcoef
+from torchmetrics.functional.classification import binary_f1_score, multiclass_f1_score, binary_accuracy, multiclass_accuracy, matthews_corrcoef
 from typing import Optional
     
 
@@ -88,10 +89,11 @@ class SASABaseline(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("F1", binary_f1_score(y_hat, y))]
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y))]
-        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -200,10 +202,11 @@ class SASALSTM(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("F1", binary_f1_score(y_hat, y))]
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y))]
-        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -333,10 +336,11 @@ class SASACNN(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("F1", binary_f1_score(y_hat, y))]
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y))]
-        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -421,10 +425,11 @@ class SASADummyModel(pl.LightningModule):
     def _accuracy(self, y_hat, y):
         metrics = []
         if self.num_classes == 2:
-            return [("F1", binary_f1_score(y_hat, y))]
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y))]
-        return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
