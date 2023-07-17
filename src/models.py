@@ -29,6 +29,7 @@ class SASABaseline(pl.LightningModule):
         self.output_path = kwargs.get("output_path", ".")
 
         self.hparams["Modeltype"] = "SASABaseline"
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
         self.save_hyperparameters()
         
 
@@ -39,7 +40,7 @@ class SASABaseline(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss, on_step=False, on_epoch=True)
@@ -51,7 +52,7 @@ class SASABaseline(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
     
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss, on_step=False, on_epoch=True)
@@ -63,7 +64,7 @@ class SASABaseline(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
@@ -141,7 +142,7 @@ class SASALSTM(pl.LightningModule):
         self.softmax = nn.Softmax()
         self.hparams["Modeltype"] = "SASALSTM"
         self.save_hyperparameters()
-
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
 
     def forward(self, x):
         lstm_h, (_, _) = self.lstm_layer(x)
@@ -153,7 +154,7 @@ class SASALSTM(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss, on_step=True, on_epoch=True)
@@ -165,7 +166,7 @@ class SASALSTM(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
     
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss, on_step=False, on_epoch=True)
@@ -177,7 +178,7 @@ class SASALSTM(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
@@ -268,6 +269,7 @@ class SASACNN(pl.LightningModule):
         self.softmax = nn.Softmax()
         self.hparams["Modeltype"] = "SASACNN"
         self.save_hyperparameters()
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
 
     def forward(self, x):
         # TODO remove this
@@ -281,7 +283,7 @@ class SASACNN(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss, on_step=False, on_epoch=True)
@@ -293,7 +295,7 @@ class SASACNN(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
     
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss, on_step=False, on_epoch=True)
@@ -305,7 +307,7 @@ class SASACNN(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
@@ -356,7 +358,7 @@ class SASADummyModel(pl.LightningModule):
         super().__init__()
         self.num_classes = num_classes
         self.label_distribution = label_distribution if label_distribution is not None else None
-        
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
 
     def forward(self, x):
         num_samples = x.shape[1]
@@ -391,7 +393,7 @@ class SASADummyModel(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
         self.log("train_loss", loss, on_step=False, on_epoch=True)
@@ -403,7 +405,7 @@ class SASADummyModel(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        mask = (y != -1)
+        mask = (y != self.mask_value)
     
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss, on_step=False, on_epoch=True)
@@ -415,7 +417,7 @@ class SASADummyModel(pl.LightningModule):
         x, y, _ = batch
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        mask = (y != -1)
+        mask = (y != self.mask_value)
         loss = self._loss(y_hat[mask], y[mask])
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
