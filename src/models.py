@@ -11,7 +11,7 @@ from typing import Optional
 
 class SASABaseline(pl.LightningModule):
     def __init__(self, 
-                 num_classes: Literal[2, 3, 10] = 3,
+                 num_classes: Literal[1, 2, 3, 10] = 3,
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
@@ -107,7 +107,7 @@ class SASABaseline(pl.LightningModule):
 class SASALSTM(pl.LightningModule):
 
     def __init__(self, 
-                 num_classes: Literal[2, 3, 10] = 3,
+                 num_classes: Literal[1, 2, 3, 10] = 3,
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
@@ -219,7 +219,7 @@ class SASALSTM(pl.LightningModule):
 
 class SASACNN(pl.LightningModule):
     def __init__(self, 
-                 num_classes: Literal[2, 3, 10] = 3,
+                 num_classes: Literal[1, 2, 3, 10] = 3,
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
