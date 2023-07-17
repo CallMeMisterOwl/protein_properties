@@ -235,7 +235,7 @@ class GlycoDataset(Dataset):
         return len(self.X)
     
     def __getitem__(self, index):
-        return self.X[index], self.y[index], self.protein_ids[index]
+        return self.X[index], self.y[index], self.pids[index]
     
     
 
