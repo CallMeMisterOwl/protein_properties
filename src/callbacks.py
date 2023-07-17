@@ -50,6 +50,8 @@ class LogPredictionCallback(Callback):
         outputs = list(map(list, zip(*outputs)))
         preds = np.concatenate(outputs[0])
         ys = np.concatenate(outputs[1])
+        if self.num_classes == 1:
+            return
         if self.num_classes < 3:
             # For binary predictions use threshold of 0.5
             pred_classes = (preds >= 0.5).astype(int)
