@@ -92,7 +92,7 @@ class SASABaseline(pl.LightningModule):
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
         ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
@@ -205,7 +205,7 @@ class SASALSTM(pl.LightningModule):
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
         ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
@@ -340,7 +340,7 @@ class SASACNN(pl.LightningModule):
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
         ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
@@ -365,7 +365,7 @@ class SASADummyModel(pl.LightningModule):
 
         if self.num_classes == 1:
             # return zeros for regression
-            return torch.zeros(num_samples, 1)
+            return torch.zeros(num_samples, 1).half().to(x.device)
         if self.label_distribution is not None:
             if self.num_classes > 2:
          # Randomly draw indices based on label distribution
@@ -406,7 +406,7 @@ class SASADummyModel(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         mask = (y != self.mask_value)
-    
+        
         loss = self._loss(y_hat[mask], y[mask])
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
@@ -429,18 +429,18 @@ class SASADummyModel(pl.LightningModule):
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
         if self.num_classes == 1:
-            return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
         ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
-        if self.loss_fn is not None:
-            return self.loss_fn(y_hat, y, self.class_weights)
+        print(y_hat.shape, y.shape)
+        print(y_hat, y)
         if self.num_classes == 1:
             return F.mse_loss(y_hat, y)
         elif self.num_classes == 2:
-            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
-        return F.cross_entropy(y_hat, y, weight=self.class_weights)
+            return F.binary_cross_entropy_with_logits(y_hat, y)
+        return F.cross_entropy(y_hat, y)
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
