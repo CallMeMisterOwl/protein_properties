@@ -93,9 +93,9 @@ class SASADataset(Dataset):
             raise NotImplementedError("Blind test set not implemented yet!")
         
         try:
-            self.X = np.load(str(self.np_path / f"{self.split}_X.npy"), allow_pickle=True)
+            self.X = np.load(str(self.np_path / f"{self.split}_X_c{self.num_classes}.npy"), allow_pickle=True)
             self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
-            self.pids = np.load(str(self.np_path / f"{self.split}_pids.npy"), allow_pickle=True)
+            self.pids = np.load(str(self.np_path / f"{self.split}_pids_c{self.num_classes}.npy"), allow_pickle=True)
             return
         except:
             print("Creating numpy arrays...")
@@ -141,9 +141,9 @@ class SASADataset(Dataset):
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
         self.pids = np.array(pids, dtype=object)
-        np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
+        np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}.npy"), self.X)
         np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), self.y)
-        np.save(str(self.np_path / f"{self.split}_pids.npy"), self.pids)
+        np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}.npy"), self.pids)
         
     def get_relative_sa(self, seq, sasa):
         sasa = np.array(sasa)

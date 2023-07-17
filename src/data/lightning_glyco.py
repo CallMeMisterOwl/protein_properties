@@ -206,6 +206,7 @@ class GlycoDataset(Dataset):
             return
         except:
             print("Creating numpy arrays...")
+            
 
         fasta = Fasta(self.data_dir / f"{self.split}.o")
         embeddings = h5py.File(self.embedding_path, 'r')

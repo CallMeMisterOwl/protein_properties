@@ -3,6 +3,8 @@ mpl.rcParams['figure.dpi'] = 400
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import pandas as pd
+from pathlib import Path
 from sklearn.metrics import confusion_matrix
 from lightning.pytorch.callbacks import Callback
 import wandb
@@ -33,32 +35,37 @@ def create_conf_matrix(ys, preds, num_classes, model_name):
     sns.heatmap(conf_matrix, annot=True, cmap=pal, fmt="d", ax=axes)
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title(f"Confusion matrix test set {model_name} classes {self.num_classes}")
+    plt.title(f"Confusion matrix test set {model_name} classes {num_classes}")
     plt.text(1.5,3.9, ranges, fontsize=10, horizontalalignment='center')
-    return fig, ax
+    return fig, axes
     
 
 class LogPredictionCallback(Callback):
     
     def __init__(self, out_path):
         super().__init__()
-        self.out_path = out_path
+        self.out_path = Path(out_path)
+        self.out_path.mkdir(parents=True, exist_ok=True)
+        self.test_cache = []
 
+        
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.test_cache.append(outputs)
+        
 
-    def on_test_epoch_end(self, trainer, pl_module, outputs):
+    def on_test_epoch_end(self, trainer, pl_module):
         # Unpack outputs
-        outputs = list(map(list, zip(*outputs)))
+        outputs = list(map(list, zip(*self.test_cache)))
         preds = np.concatenate(outputs[0])
         ys = np.concatenate(outputs[1])
-        if self.num_classes == 1:
+        if pl_module.num_classes == 1:
             return
-        if self.num_classes < 3:
+        if pl_module.num_classes < 3:
             # For binary predictions use threshold of 0.5
             pred_classes = (preds >= 0.5).astype(int)
         else:
             # For multiclass predictions take index of max
             pred_classes = np.argmax(preds, axis=1)
-
         # Save test predictions to csv
         self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys), columns=["Score", "Pred_class", "Real_class"])
         self.test_preds.to_csv(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_test_preds.tsv", sep='\t', index=False)
