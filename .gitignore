@@ -9,7 +9,10 @@ test.ipynb
 
 data/sasa/sasaembeddings.h5
 data/sasa/*.npy
+data/sasa/*.pt
 data/glyco/*.npy
+data/glyco/*.pt
+data/glyco/glycoembeddings.h5
 logs/*
 wandb/
 protein_properties/
