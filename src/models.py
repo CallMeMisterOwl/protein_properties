@@ -93,7 +93,7 @@ class SASABaseline(pl.LightningModule):
         if self.num_classes == 1:
             return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -206,7 +206,7 @@ class SASALSTM(pl.LightningModule):
         if self.num_classes == 1:
             return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -340,7 +340,7 @@ class SASACNN(pl.LightningModule):
         if self.num_classes == 1:
             return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -429,7 +429,7 @@ class SASADummyModel(pl.LightningModule):
         if self.num_classes == 1:
             return [("MAE", nn.L1Loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes)))]
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
