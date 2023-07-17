@@ -31,6 +31,8 @@ class SASABaseline(pl.LightningModule):
         self.hparams["Modeltype"] = "SASABaseline"
         self.mask_value = -1 if self.num_classes > 1 else -1.0
         self.save_hyperparameters()
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
         
 
     def forward(self, x):
@@ -150,6 +152,8 @@ class SASALSTM(pl.LightningModule):
         self.hparams["Modeltype"] = "SASALSTM"
         self.save_hyperparameters()
         self.mask_value = -1 if self.num_classes > 1 else -1.0
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         lstm_h, (_, _) = self.lstm_layer(x)
@@ -284,6 +288,8 @@ class SASACNN(pl.LightningModule):
         self.hparams["Modeltype"] = "SASACNN"
         self.save_hyperparameters()
         self.mask_value = -1 if self.num_classes > 1 else -1.0
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         # TODO remove this
@@ -484,6 +490,8 @@ class GlycoModel(pl.LightningModule):
 
         self.hparams["Modeltype"] = "GlycoModel"
         self.save_hyperparameters()
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
         
 
     def forward(self, x):
