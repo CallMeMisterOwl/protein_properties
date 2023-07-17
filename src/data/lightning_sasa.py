@@ -126,7 +126,11 @@ class SASADataset(Dataset):
                 rsa[rsa != -1] = np.clip(np.trunc(np.sqrt(rsa[rsa != -1] * 100)), 0, 9)
             else:
                 raise ValueError("Invalid number of classes!\nValid values are 2, 3 and 10.")
-            y.append(rsa.astype(np.int64))
+            if self.num_classes != 1:
+                y.append(rsa.astype(np.int64))
+            else:
+                y.append(rsa.astype(np.float32))
+            
             # vespa replaces "-" with "_" in the ids -.-
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
             assert len(e) == len(rsa), f"Length of embedding and RSA is not equal for {pid}"
@@ -210,9 +214,9 @@ class SASADataModule(pl.LightningDataModule):
         # Shuffel train data #reproducibility #science
         
         # Create an array of indices that correspond to the order of IDs in 'b'
-        if not (self.np_path / "shuffle.npy").exists():
+        if not (self.np_path / f"shuffle_{self.config.num_classes}.npy").exists():
             self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
-            np.save(self.np_path / "shuffle.npy", self.shuffled_ids)
+            np.save(self.np_path / f"shuffle_{self.config.num_classes}.npy", self.shuffled_ids)
         else:
             self.shuffled_ids = np.load(self.np_path / "shuffle.npy", allow_pickle=True)
 

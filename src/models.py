@@ -357,6 +357,9 @@ class SASADummyModel(pl.LightningModule):
     def forward(self, x):
         num_samples = x.shape[1]
 
+        if self.num_classes == 1:
+            # return zeros for regression
+            return torch.zeros(num_samples, 1)
         if self.label_distribution is not None:
             if self.num_classes > 2:
          # Randomly draw indices based on label distribution
@@ -367,6 +370,7 @@ class SASADummyModel(pl.LightningModule):
                 # Convert label indices to one-hot representation
                 logits = torch.zeros(num_samples, self.num_classes if self.num_classes != 2 else 1)
                 logits[torch.arange(num_samples), label_indices] = 1.0
+            
             else:
                 
                 # Binary classification
