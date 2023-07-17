@@ -30,6 +30,8 @@ def main():
     cli.trainer.fit(model=cli.model, datamodule=cli.datamodule)
     # get validation scores for the best model
     cli.trainer.validate(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())
+    if not cli.config.HP:
+        cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
 
 
 if __name__ == "__main__":
