@@ -188,6 +188,7 @@ class GlycoDataset(Dataset):
         self.embedding_path = config.embedding_path
         self.np_path = Path(config.np_path)
         self.num_classes = len(config.classes)
+        self.to_classes = np.vectorize(config.classes.get)
         self.config = config
 
         self.X = None
@@ -221,7 +222,7 @@ class GlycoDataset(Dataset):
                 print(f"Protein {pid}  not found in embeddings!")
                 continue
             X.append(embedding[samples])
-            y.append(labels[samples])
+            y.append(self.to_classes(labels[samples]))
             pids.append(pid)
 
         self.X = np.array(X, dtype=object)
