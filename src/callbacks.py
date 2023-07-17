@@ -66,6 +66,9 @@ class LogPredictionCallback(Callback):
         else:
             # For multiclass predictions take index of max
             pred_classes = np.argmax(preds, axis=1)
+        print(preds.shape, ys.shape)
+        print(np.unique(pred_classes, return_counts=True))
+        print(np.unique(ys, return_counts=True))
         # Save test predictions to csv
         self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys), columns=["Score", "Pred_class", "Real_class"])
         self.test_preds.to_csv(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_test_preds.tsv", sep='\t', index=False)
