@@ -73,12 +73,12 @@ class SASABaseline(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
         else:
-            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
     
     def _configure_optimizer(self, optim_config = None):
         
@@ -196,12 +196,12 @@ class SASALSTM(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
         else:
-            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
 
     def _configure_optimizer(self, optim_config = None):
         
@@ -334,12 +334,12 @@ class SASACNN(pl.LightningModule):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(y_hat.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(y_hat.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
         else:
-            return y_hat.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
         
     def _configure_optimizer(self, optim_config = None):
         
@@ -482,7 +482,9 @@ class GlycoModel(pl.LightningModule):
         self.weight_decay = weight_decay
         self.loss_fn = None
         self.model = nn.Sequential(
-            nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1),
+            nn.Linear(1024, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.num_classes if self.num_classes > 2 else 1),
         )
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
