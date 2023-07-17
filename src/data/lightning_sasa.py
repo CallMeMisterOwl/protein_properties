@@ -244,7 +244,8 @@ class SASADataModule(pl.LightningDataModule):
                                             else arr
                                             for arr in self.test_dataset.y], dtype=object)
             
-                    
+        if self.config.num_classes == 1:
+            return
         if (self.np_path / f"class_weights_c{self.config.num_classes}.pt").exists():
             self.class_weights = torch.load(self.np_path / f"class_weights_c{self.config.num_classes}.pt")
             return

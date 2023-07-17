@@ -141,8 +141,8 @@ class GlycoDataModule(pl.LightningDataModule):
                                             for arr in self.N_test_dataset.y], dtype=object)
             
                     
-        if (self.np_path / f"class_weights_c{self.config.num_classes}.pt").exists():
-            self.class_weights = torch.load(self.np_path / f"class_weights_c{self.config.num_classes}.pt")
+        if (self.np_path / f"class_weights_c{len(self.config.classes)}.pt").exists():
+            self.class_weights = torch.load(self.np_path / f"class_weights_c{len(self.config.classes)}.pt")
             return
         
         # calculate class weights for the loss function
@@ -153,12 +153,12 @@ class GlycoDataModule(pl.LightningDataModule):
         counts = np.unique(ys, return_counts=True)[1]
         # check if class weights are already calculated
 
-        if self.config.num_classes < 3:
+        if len(self.config.classes) < 3:
             # For binary predictions set only positive weight
             self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
         else:
-            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.num_classes)], dtype=torch.float32)
-        torch.save(self.class_weights, self.np_path / f"class_weights_c{self.config.num_classes}.pt")
+            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(len(self.config.classes))], dtype=torch.float32)
+        torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}.pt")
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
@@ -201,6 +201,7 @@ class GlycoDataset(Dataset):
         try:
             self.X = np.load(str(self.np_path / f"{self.split}_X.npy"), allow_pickle=True)
             self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
+            self.pids = np.load(str(self.np_path / f"{self.split}_pids.npy"), allow_pickle=True)
             return
         except:
             print("Creating numpy arrays...")
@@ -221,7 +222,7 @@ class GlycoDataset(Dataset):
                 continue
             X.append(embedding[samples])
             y.append(labels[samples])
-            pids.append(np.repeat(pid, len(samples)))
+            pids.append(pid)
 
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
