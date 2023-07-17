@@ -215,7 +215,7 @@ class GlycoDataset(Dataset):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes)
             try:
-                embedding = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
+                embedding = embeddings[pid.replace("-", "_").replace(".", "_")][()]
             except:
                 print(f"Protein {pid}  not found in embeddings!")
                 continue
