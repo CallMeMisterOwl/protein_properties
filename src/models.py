@@ -89,6 +89,8 @@ class SASABaseline(pl.LightningModule):
         metrics = []
         if self.num_classes == 2:
             return [("F1", binary_f1_score(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", nn.L1Loss(y_hat, y))]
         return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
@@ -199,6 +201,8 @@ class SASALSTM(pl.LightningModule):
         metrics = []
         if self.num_classes == 2:
             return [("F1", binary_f1_score(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", nn.L1Loss(y_hat, y))]
         return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
@@ -330,6 +334,8 @@ class SASACNN(pl.LightningModule):
         metrics = []
         if self.num_classes == 2:
             return [("F1", binary_f1_score(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", nn.L1Loss(y_hat, y))]
         return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
@@ -412,14 +418,18 @@ class SASADummyModel(pl.LightningModule):
         metrics = []
         if self.num_classes == 2:
             return [("F1", binary_f1_score(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", nn.L1Loss(y_hat, y))]
         return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
-    
+
     def _loss(self, y_hat, y):
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y, self.class_weights)
         if self.num_classes == 1:
             return F.mse_loss(y_hat, y)
         elif self.num_classes == 2:
-            return F.binary_cross_entropy_with_logits(y_hat, y)
-        return F.cross_entropy(y_hat, y)
+            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
+        return F.cross_entropy(y_hat, y, weight=self.class_weights)
     
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -504,6 +514,8 @@ class GlycoModel(pl.LightningModule):
         metrics = []
         if self.num_classes == 2:
             return [("F1", binary_f1_score(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", nn.L1Loss(y_hat, y))]
         return [("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
