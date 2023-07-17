@@ -218,7 +218,7 @@ class SASADataModule(pl.LightningDataModule):
             self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
             np.save(self.np_path / f"shuffle_{self.config.num_classes}.npy", self.shuffled_ids)
         else:
-            self.shuffled_ids = np.load(self.np_path / "shuffle.npy", allow_pickle=True)
+            self.shuffled_ids = np.load(self.np_path / f"shuffle_{self.config.num_classes}.npy", allow_pickle=True)
 
         index_mapping = {id: index for index, id in enumerate(self.shuffled_ids)}
         sorted_indices = np.zeros(len(self.shuffled_ids), dtype=int)
