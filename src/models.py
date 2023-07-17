@@ -69,7 +69,14 @@ class SASABaseline(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        return loss
+        if self.num_classes < 3:
+            # For binary predictions flatten the array
+            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+        elif self.num_classes > 2:
+            # For multiclass predictions don't
+            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+        else:
+            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
     
     def _configure_optimizer(self, optim_config = None):
         
@@ -183,7 +190,14 @@ class SASALSTM(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        return loss
+        if self.num_classes < 3:
+            # For binary predictions flatten the array
+            return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
+        elif self.num_classes > 2:
+            # For multiclass predictions don't
+            return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+        else:
+            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
 
     def _configure_optimizer(self, optim_config = None):
         
@@ -315,9 +329,11 @@ class SASACNN(pl.LightningModule):
         if self.num_classes < 3:
             # For binary predictions flatten the array
             return self.sigmoid(pred.squeeze()).cpu().numpy().flatten(), y.cpu().numpy().squeeze()
-        else:
+        elif self.num_classes > 2:
             # For multiclass predictions don't
             return self.softmax(pred.squeeze()).cpu().numpy(), y.cpu().numpy().squeeze()
+        else:
+            return pred.squeeze().cpu().numpy().flatten(), y.cpu().numpy().squeeze()
         
     
     def _configure_optimizer(self, optim_config = None):
