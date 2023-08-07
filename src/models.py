@@ -350,7 +350,7 @@ class SASACNN(pl.LightningModule):
         )
 
     def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3, factor=0.5, verbose=True)
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3, factor=0.5, verbose=True, threshold=0.001)
 
     def configure_optimizers(self):
         optimizer = self._configure_optimizer()
