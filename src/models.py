@@ -350,7 +350,7 @@ class SASACNN(pl.LightningModule):
         )
 
     def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3, factor=0.5, verbose=True)
 
     def configure_optimizers(self):
         optimizer = self._configure_optimizer()
@@ -380,6 +380,7 @@ class SASADummyModel(pl.LightningModule):
         self.num_classes = num_classes
         self.label_distribution = label_distribution if label_distribution is not None else None
         self.mask_value = -1 if self.num_classes > 1 else -1.0
+        self.hparams["Modeltype"] = "SASADummyModel"
 
     def forward(self, x):
         num_samples = x.shape[1]
@@ -395,11 +396,10 @@ class SASADummyModel(pl.LightningModule):
                 torch.use_deterministic_algorithms(True)
                 
                 # Convert label indices to one-hot representation
-                logits = torch.zeros(num_samples, self.num_classes if self.num_classes != 2 else 1)
-                logits[torch.arange(num_samples), label_indices] = 1.0
+                logits = torch.zeros(num_samples, self.num_classes)
+                logits[:, label_indices - 1] = 1.0
             
             else:
-                
                 # Binary classification
                 p = self.label_distribution.item()  # Probability of positive class
                 logits = torch.empty(num_samples, 1).uniform_(0, 1)
@@ -455,8 +455,7 @@ class SASADummyModel(pl.LightningModule):
         ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
-        print(y_hat.shape, y.shape)
-        print(y_hat, y)
+        
         if self.num_classes == 1:
             return F.mse_loss(y_hat, y)
         elif self.num_classes == 2:
@@ -496,7 +495,7 @@ class GlycoModel(pl.LightningModule):
         
 
     def forward(self, x):
-        return self.model(x)
+        return F.relu(self.model(x))
     
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -537,7 +536,8 @@ class GlycoModel(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        return self.sigmoid(y_hat).cpu().numpy().flatten(), y.cpu().numpy()
+        
+        return self.softmax(y_hat).cpu().numpy(), y.cpu().numpy()
         
     
     def _configure_optimizer(self, optim_config = None):
@@ -558,10 +558,111 @@ class GlycoModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("F1", binary_f1_score(y_hat, y))]
         return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("F1", multiclass_f1_score(y_hat, y, num_classes=self.num_classes))]
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+
+    def _loss(self, y_hat, y):
+        if len(y_hat.shape ) != 2:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y, self.class_weights)
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
+        return F.cross_entropy(y_hat, y, weight=self.class_weights)
+
+
+class GlycoDummy(pl.LightningModule):
+    def __init__(self,
+                 class_weights: torch.Tensor = None,
+                 lr: float = 1e-3,
+                 weight_decay: float = 0.0,
+                 **kwargs):
+        super().__init__()
+        self.num_classes = 3
+        self.class_weights = class_weights
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.loss_fn = None
+        self.model = nn.Sequential(
+            nn.Linear(1024, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.num_classes if self.num_classes > 2 else 1),
+        )
+        self.lr_scheduler = kwargs.get("lr_scheduler", None)
+        self.output_path = kwargs.get("output_path", ".")
+
+        self.hparams["Modeltype"] = "GlycoDummy"
+        self.save_hyperparameters()
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
+        
+
+    def forward(self, x):
+        return torch.zeros(x.shape[1]).to(x.device)
+    
+    def training_step(self, batch, batch_idx):
+        x, y, _ = batch
+        
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        
+        if len(y_hat.shape) == 1:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
+        for t in self._accuracy(y_hat, y):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        
+        if len(y_hat.shape) == 1:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
+        for t in self._accuracy(y_hat, y):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        if len(y_hat.shape) == 0:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
+
+        for t in self._accuracy(y_hat, y):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        
+        return y_hat.cpu().numpy(), y.cpu().numpy()
+        
+    
+    def _configure_optimizer(self, optim_config = None):
+        
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay
+        )
+        #raise ValueError(f"Invalid optimizer {optim_config.optimize}. See --help")
+
+    def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
+
+    def configure_optimizers(self):
+        optimizer = self._configure_optimizer()
+        return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
+    
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if len(y_hat.shape ) != 2:
