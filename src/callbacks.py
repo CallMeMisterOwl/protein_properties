@@ -64,6 +64,8 @@ class LogPredictionCallback(Callback):
         preds = np.concatenate(outputs[0])
         ys = np.concatenate(outputs[1])
         if pl_module.num_classes == 1:
+            self.test_preds = pd.DataFrame(zip(preds, ys), columns=["Pred_value", "Real_value"])
+            self.test_preds.to_csv(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_test_preds.tsv", sep='\t', index=False)
             return
         if pl_module.num_classes < 3:
             # For binary predictions use threshold of 0.5
