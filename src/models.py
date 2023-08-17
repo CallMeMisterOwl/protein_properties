@@ -28,6 +28,9 @@ class SASABaseline(pl.LightningModule):
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
 
+        torch.nn.init.xavier_uniform_(self.model[0].weight)
+        self.model[0].bias.data.fill_(0.01)
+        
         self.hparams["Modeltype"] = "SASABaseline"
         self.mask_value = -1 if self.num_classes > 1 else -1.0
         self.save_hyperparameters()
@@ -36,7 +39,7 @@ class SASABaseline(pl.LightningModule):
         
 
     def forward(self, x):
-        return self.model(x)
+        return self.sigmoid(self.model(x))
     
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -71,14 +74,14 @@ class SASABaseline(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        if self.num_classes < 3:
+        if self.num_classes == 1:
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+        elif self.num_classes < 3:
             # For binary predictions flatten the array
             return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
         elif self.num_classes > 2:
             # For multiclass predictions don't
             return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
-        else:
-            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
     
     def _configure_optimizer(self, optim_config = None):
         
@@ -194,14 +197,15 @@ class SASALSTM(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        if self.num_classes < 3:
+        if self.num_classes == 1:
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
+        elif self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
-        else:
-            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
+        
 
     def _configure_optimizer(self, optim_config = None):
         
@@ -332,14 +336,14 @@ class SASACNN(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        if self.num_classes < 3:
+        if self.num_classes == 1:
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
+        elif self.num_classes < 3:
             # For binary predictions flatten the array
-            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
         elif self.num_classes > 2:
             # For multiclass predictions don't
-            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
-        else:
-            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze(), _[mask].cpu()
         
     def _configure_optimizer(self, optim_config = None):
         

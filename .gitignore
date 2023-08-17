@@ -19,3 +19,4 @@ protein_properties/
 data/sasa/class_weights_*.pt
 lightning_logs/
 chkpnts/
+log/
