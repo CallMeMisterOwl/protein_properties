@@ -545,11 +545,8 @@ class GlycoModel(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.loss_fn = None
-        self.model = nn.Sequential(
-            nn.Linear(1024, 64),
-            nn.ReLU(),
-            nn.Linear(64, self.num_classes if self.num_classes > 2 else 1),
-        )
+        self.model = nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1)
+
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
 
