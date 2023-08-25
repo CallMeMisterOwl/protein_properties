@@ -17,7 +17,7 @@ class GlycoDataConfig():
     np_path: str = '../../data/'
     num_workers: int = 4
     batch_size: int = 32
-    classes: dict = {"T": 0, "N": 1, "O": 2}
+    classes: dict
 
 
 import torch
