@@ -141,8 +141,8 @@ class GlycoDataModule(pl.LightningDataModule):
                                             for arr in self.N_test_dataset.y], dtype=object)
             
                     
-        if (self.np_path / f"class_weights_c{len(self.config.classes)}.pt").exists():
-            self.class_weights = torch.load(self.np_path / f"class_weights_c{len(self.config.classes)}.pt")
+        if (self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt").exists():
+            self.class_weights = torch.load(self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt")
             return
         
         # calculate class weights for the loss function
@@ -158,7 +158,7 @@ class GlycoDataModule(pl.LightningDataModule):
             self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
         else:
             self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(len(self.config.classes))], dtype=torch.float32)
-        torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}_{"_".join(self.config.classes.keys())}.pt")
+        torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt")
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
@@ -229,9 +229,9 @@ class GlycoDataset(Dataset):
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
         self.pids = np.array(pids, dtype=object)
-        np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{"_".join(self.config.classes.keys())}.npy"), self.X)
-        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{"_".join(self.config.classes.keys())}.npy"), self.y)
-        np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{"_".join(self.config.classes.keys())}.npy"), self.pids)
+        np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.X)
+        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.y)
+        np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.pids)
     
     def __len__(self):
         return len(self.X)
