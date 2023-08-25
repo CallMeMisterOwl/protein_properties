@@ -107,11 +107,11 @@ class GlycoDataModule(pl.LightningDataModule):
         # Shuffel train data #reproducibility #science
         
         # Create an array of indices that correspond to the order of IDs in 'b'
-        if not (self.np_path / "shuffle.npy").exists():
+        if not (self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt").exists():
             self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
-            np.save(self.np_path / "shuffle.npy", self.shuffled_ids)
+            np.save(self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt", self.shuffled_ids)
         else:
-            self.shuffled_ids = np.load(self.np_path / "shuffle.npy", allow_pickle=True)
+            self.shuffled_ids = np.load(self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt", allow_pickle=True)
 
         index_mapping = {id: index for index, id in enumerate(self.shuffled_ids)}
         sorted_indices = np.zeros(len(self.shuffled_ids), dtype=int)
