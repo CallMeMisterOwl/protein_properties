@@ -564,11 +564,14 @@ class GlycoModel(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
-        
+        if x.shape[1] == 1:
+            x = x.squeeze(0)
         y = y.squeeze()
-        y_hat = self(x).squeeze()        
+        y_hat = self(x).squeeze()   
+            
         loss = self._loss(y_hat, y)
-        if len(y_hat.shape) == 1:
+        
+        if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("train_loss", loss, on_step=False, on_epoch=True)
@@ -581,7 +584,7 @@ class GlycoModel(pl.LightningModule):
         y = y.squeeze()
         y_hat = self(x).squeeze()
         loss = self._loss(y_hat, y)
-        if len(y_hat.shape) == 1:
+        if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
@@ -595,7 +598,7 @@ class GlycoModel(pl.LightningModule):
         y_hat = self(x).squeeze()        
         
         loss = self._loss(y_hat, y)
-        if len(y_hat.shape) == 1:
+        if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
@@ -622,6 +625,8 @@ class GlycoModel(pl.LightningModule):
         return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
     
     def _accuracy(self, y_hat, y):
+        
+
         metrics = []
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
