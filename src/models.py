@@ -623,8 +623,11 @@ class GlycoModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+        if self.num_classes == 2:
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
+        else:
+            return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+            ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if len(y_hat.shape ) != 2:
