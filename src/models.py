@@ -606,7 +606,7 @@ class GlycoModel(pl.LightningModule):
         for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
         if self.num_classes == 2:
-            return self.sigmoid(y_hat).cpu().numpy(), y.cpu().numpy()
+            return self.sigmoid(y_hat).cpu().numpy().squeeze(), y.cpu().numpy().squeeze()
         return self.softmax(y_hat).cpu().numpy(), y.cpu().numpy()
         
     
