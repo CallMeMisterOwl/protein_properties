@@ -537,9 +537,10 @@ class GlycoModel(pl.LightningModule):
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
+                 num_classes: int = 3,
                  **kwargs):
         super().__init__()
-        self.num_classes = 3
+        self.num_classes = num_classes
         self.class_weights = class_weights
         self.lr = lr
         self.weight_decay = weight_decay
