@@ -10,11 +10,12 @@ data:
   class_path: src.data.lightning_glyco.GlycoDataModule
   init_args:
     config:
+      classes: {"T": 0, "N": 1}
       data_dir: /mnt/project/hasler/protein_properties/data/glyco
       embedding_path: /mnt/project/hasler/protein_properties/data/glyco/glyco_embeddings.h5
       np_path: /mnt/project/hasler/protein_properties/data/glyco/
       num_workers: 8
-      classes: {"T": 0, "N": 1}
+      
   
       
 

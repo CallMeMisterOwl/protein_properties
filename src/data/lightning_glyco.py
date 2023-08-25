@@ -12,13 +12,13 @@ from dataclasses import dataclass
 
 @dataclass
 class GlycoDataConfig():
+    classes: dict
     data_dir: str = '../../data'
     embedding_path: str = '../../data/glyco/glyco_embeddings.h5'
     np_path: str = '../../data/'
     num_workers: int = 4
     batch_size: int = 32
-    classes: dict
-
+    
 
 import torch
 from torch.utils.data import BatchSampler
