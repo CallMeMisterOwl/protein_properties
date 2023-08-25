@@ -578,6 +578,8 @@ class GlycoModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y, _ = batch
+        if x.shape[1] == 1:
+            x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()
         loss = self._loss(y_hat, y)
@@ -591,6 +593,8 @@ class GlycoModel(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
+        if x.shape[1] == 1:
+            x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()        
         
