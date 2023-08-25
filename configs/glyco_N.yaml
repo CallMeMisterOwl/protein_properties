@@ -1,0 +1,45 @@
+output_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
+HP: False
+model:
+  class_path: src.models.GlycoModel
+  init_args:
+    lr: 1e-3
+
+
+data:
+  class_path: src.data.lightning_glyco.GlycoDataModule
+  init_args:
+    config:
+      data_dir: /mnt/project/hasler/protein_properties/data/glyco
+      embedding_path: /mnt/project/hasler/protein_properties/data/glyco/glyco_embeddings.h5
+      np_path: /mnt/project/hasler/protein_properties/data/glyco/
+      num_workers: 8
+      classes: {"T": 0, "N": 1}
+  
+      
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  accumulate_grad_batches: 64
+  max_epochs: 50
+  num_sanity_val_steps: 2
+  callbacks:
+    - class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+    - class_path: EarlyStopping
+      init_args:
+        monitor: val_loss
+        mode: min
+        min_delta: 0.001 #DEBUG 9999
+        patience: 5 #DEBUG 1
+    - class_path: LearningRateMonitor
+      init_args:
+        logging_interval: step
+    - class_path: src.callbacks.LogPredictionCallback
+      init_args:
+        out_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
