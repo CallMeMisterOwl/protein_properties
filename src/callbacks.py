@@ -48,6 +48,7 @@ class LogPredictionCallback(Callback):
         self.out_path = Path(out_path)
         self.out_path.mkdir(parents=True, exist_ok=True)
         self.test_cache = []
+        print(f"Attention: Test predictions will be saved to in the cache. If you want to reuse the callback, please clear the cache.")
 
         
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
@@ -81,3 +82,5 @@ class LogPredictionCallback(Callback):
         fig, ax = create_conf_matrix(ys, pred_classes, pl_module.num_classes, pl_module.hparams["Modeltype"])
         if isinstance(trainer.logger, WandbLogger):
             trainer.logger.experiment.log({f"confmatrix_{pl_module.hparams['Modeltype']}_{pl_module.num_classes}": wandb.Image(ax)})
+        else:
+            fig.savefig(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_confmatrix.png")
