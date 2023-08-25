@@ -380,6 +380,64 @@ class SASACNN(pl.LightningModule):
             return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
         return F.cross_entropy(y_hat, y, weight=self.class_weights)
 
+class EnsembleModel(pl.LightningModule):
+    def __init__(self, models, num_classes=1, device="cuda"):
+        super().__init__()
+        self.models = models
+        self.models = [model.to(device) for model in self.models]
+        self.num_classes = num_classes
+        self.hparams["Modeltype"] = "EnsembleModel"
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        x = x.to(self.device)
+        
+        # mean of all predictions
+        return torch.mean(torch.stack([model(x).squeeze() if self.num_classes < 3 else self.softmax(model(x)) for model in self.models]), dim=0)
+
+    def training_step(self, batch, batch_idx):
+        pass
+
+    def validation_step(self, batch, batch_idx):
+        pass
+
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        mask = (y != self.mask_value)
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        if self.num_classes == 1:
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+        elif self.num_classes < 3:
+            # For binary predictions flatten the array
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+        elif self.num_classes > 2:
+            # For multiclass predictions don't
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
+    
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        if self.num_classes == 2:
+            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
+        if self.num_classes == 1:
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
+        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+
+    def _loss(self, y_hat, y):
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y)
+        return F.cross_entropy(y_hat, y)
+
+
 class SASADummyModel(pl.LightningModule):
     def __init__(self, num_classes, label_distribution: torch.Tensor = None):
         super().__init__()
