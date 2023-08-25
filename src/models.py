@@ -604,7 +604,8 @@ class GlycoModel(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
-        
+        if self.num_classes == 2:
+            return self.sigmoid(y_hat).cpu().numpy(), y.cpu().numpy()
         return self.softmax(y_hat).cpu().numpy(), y.cpu().numpy()
         
     
@@ -625,8 +626,6 @@ class GlycoModel(pl.LightningModule):
         return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
     
     def _accuracy(self, y_hat, y):
-        
-
         metrics = []
         if self.num_classes == 2:
             return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
