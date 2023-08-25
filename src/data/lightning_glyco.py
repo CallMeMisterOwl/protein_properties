@@ -217,6 +217,8 @@ class GlycoDataset(Dataset):
         for pid, seqs in tqdm(fasta.items()):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes)
+            if not np.any(samples):
+                continue
             try:
                 embedding = embeddings[pid.replace("-", "_").replace(".", "_")][()]
             except:
