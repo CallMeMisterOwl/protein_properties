@@ -557,7 +557,7 @@ class GlycoModel(pl.LightningModule):
         
 
     def forward(self, x):
-        return F.relu(self.model(x))
+        return self.model(x)
     
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
