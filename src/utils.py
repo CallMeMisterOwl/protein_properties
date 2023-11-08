@@ -2,7 +2,12 @@ import random
 import numpy as np
 from pytorch_lightning import seed_everything
 import torch  
+from tqdm import tqdm
 import math
+from Bio import Entrez
+from Bio.Seq import Seq
+import concurrent.futures
+import requests
 
 def seed_all(seed=13):
     """
@@ -82,3 +87,55 @@ def kaiming_init(model):
             param.data.normal_(0, 1 / math.sqrt(param.shape[1]))
         else:
             param.data.normal_(0, math.sqrt(2) / math.sqrt(param.shape[1]))
+
+
+def get_protein_sequences(protein_ids):
+    sequences = {}
+    protein_ids = set(protein_ids)
+    # Separate UniProt and NCBI IDs
+    uniprot_ids = [id for id in protein_ids if not id.startswith('NP_')]
+    ncbi_ids = [id for id in protein_ids if id.startswith('NP_')]
+    
+    # Fetch sequences for UniProt IDs
+    if uniprot_ids:
+        uniprot_sequences = fetch_uniprot_sequences(uniprot_ids)  # Fetch UniProt sequences
+        sequences.update(uniprot_sequences)
+    
+    # Fetch sequences for NCBI IDs
+    if ncbi_ids:
+        ncbi_sequences = fetch_ncbi_sequences(ncbi_ids)  # Fetch NCBI sequences
+        sequences.update(ncbi_sequences)
+    
+    return sequences
+
+def fetch_uniprot_sequences(uniprot_ids):
+    sequences = {}
+    
+    for uniprot_id in tqdm(uniprot_ids):
+        
+        # Make a request to UniProt for the FASTA sequence
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
+        #url = f'https://www.uniprot.org/uniprot/{uniprot_id}.fasta'
+        response = requests.get(url)
+        
+        if response.ok:
+            sequences[uniprot_id] = [''.join(response.text.split('\n')[1:])]
+    
+    return sequences
+
+def fetch_ncbi_sequences(ncbi_ids):
+    Entrez.email = 'd.hasler@campus.lmu.de'  # Set your email address here
+    Entrez.api_key = "d0e67a06b3f5a139e29f787339fae9b3d008"
+    sequences = {}
+    
+    def fetch_sequence(ncbi_id):
+        handle = Entrez.efetch(db='protein', id=ncbi_id, rettype='fasta', retmode='text')
+        record = handle.read()
+        handle.close()
+        sequences[ncbi_id] = [record.split('\n', 1)[1].replace('\n', '')]
+    
+    # Fetch sequences using concurrent futures
+    for ncbi_id in tqdm(ncbi_ids):
+        fetch_sequence(ncbi_id)
+    
+    return sequences
