@@ -75,7 +75,7 @@ def calculate_scores_for_protein(protein: str,
     atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
 
     res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
-    res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nansum)
+    res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nanmean)
 
     # clip so the mask can be recognized by the model
     res_sasa = res_sasa.clip(0.00001)
