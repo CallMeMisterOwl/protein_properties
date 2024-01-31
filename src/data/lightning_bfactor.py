@@ -92,7 +92,7 @@ class BFactorDataset(Dataset):
         except:
             print("Creating numpy arrays...")
 
-        fasta = Fasta(self.data_dir / f"{self.split}.o")
+        fasta = Fasta(self.data_dir / f"{self.split}_norm.o")
         embeddings = h5py.File(self.embedding_path, 'r')
         X = []
         y = []
