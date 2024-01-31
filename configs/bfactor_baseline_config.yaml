@@ -8,7 +8,7 @@ model:
     num_classes: 1
 
 data:
-  class_path: src.data.lightning_sasa.BFactorDataModule
+  class_path: src.data.lightning_bfactor.BFactorDataModule
   init_args:
     config:
       data_dir: /mnt/project/hasler/protein_properties/data/bfactor
