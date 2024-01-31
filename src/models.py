@@ -8,7 +8,7 @@ from torchmetrics.functional.regression import pearson_corrcoef
 from torchmetrics.functional.classification import f1_score, matthews_corrcoef, accuracy
 from typing import Optional
     
-class BfactorBaseline(pl.LightningModule):
+class BFactorBaseline(pl.LightningModule):
     def __init__(self, 
                  num_classes: Literal[1, 2, 3, 10] = 1,
                  class_weights: torch.Tensor = None,
