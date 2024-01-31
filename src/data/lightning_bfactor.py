@@ -99,13 +99,13 @@ class BFactorDataset(Dataset):
         pids = []
         for pid, seqs in tqdm(fasta.items()):
             # masking the 0.0 values, so I can remove them later before calculating the loss
-            bfactor = np.arrray(seqs[1])
+            bfactor = np.array(seqs[1])
             bfactor = np.where(bfactor == 0.0, -1, bfactor)
             y.append(bfactor.astype(np.float32))
 
             # vespa replaces "-" with "_" in the ids -.-
             e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
-            assert len(e) == len(rsa), f"Length of embedding and RSA is not equal for {pid}"
+            assert len(e) == len(bfactor), f"Length of embedding and RSA is not equal for {pid}"
             X.append(e)
             pids.append(pid)
 
