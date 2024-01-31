@@ -23,7 +23,7 @@ class SASADataConfig:
     Data configuration for SASA dataset
     """
     data_dir: str = '../../data'
-    embedding_path: str = '../../data/sasaembeddings.h5'
+    embedding_path: str = '../../data/embeddings_sasa_bfactor.h5'
     np_path: str = '../../data/'
     num_classes: Literal[1,2,3,10] = 3
     num_workers: int = 4
