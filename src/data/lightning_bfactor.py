@@ -75,8 +75,6 @@ class BFactorDataset(Dataset):
         self.np_path = Path(config.np_path)
         self.num_classes = config.num_classes
 
-        self.to_rsa = np.vectorize(hoa_tien.get)
-
         self.X = None
         self.y = None
         self.pids = None
