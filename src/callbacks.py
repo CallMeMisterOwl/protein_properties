@@ -60,8 +60,6 @@ class LogPredictionCallback(Callback):
         if pl_module.hparams["Modeltype"] == "SASADummyModel" or pl_module.hparams["Modeltype"] == "GlycoDummy":
             return
         outputs = list(map(list, zip(*self.test_cache)))
-        
-        
         preds = np.concatenate(outputs[0])
         ys = np.concatenate(outputs[1])
         if pl_module.num_classes == 1:
@@ -76,11 +74,14 @@ class LogPredictionCallback(Callback):
             
             pred_classes = np.argmax(preds, axis=1)
         
+        num_classes = pl_module.num_classes if pl_module.hparams['Modeltype'] == "GlycoModel" and pl_module.num_classes == 3 else "2 " + str(list(trainer.test_dataloaders.dataset.config.classes.keys())[1]) + "-Linked"
+
         # Save test predictions to csv
         self.test_preds = pd.DataFrame(zip(preds, pred_classes, ys), columns=["Score", "Pred_class", "Real_class"])
         self.test_preds.to_csv(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_test_preds.tsv", sep='\t', index=False)
-        fig, ax = create_conf_matrix(ys, pred_classes, pl_module.num_classes, pl_module.hparams["Modeltype"])
+        fig, ax = create_conf_matrix(ys, pred_classes, num_classes, pl_module.hparams["Modeltype"])
+        # I'm a genius
         if isinstance(trainer.logger, WandbLogger):
-            trainer.logger.experiment.log({f"confmatrix_{pl_module.hparams['Modeltype']}_{pl_module.num_classes}": wandb.Image(ax)})
+            trainer.logger.experiment.log({f"confmatrix_{pl_module.hparams['Modeltype']}_{num_classes}": wandb.Image(ax)})
         else:
-            fig.savefig(self.out_path / f"{pl_module.hparams['Modeltype']}_{pl_module.num_classes}_confmatrix.png")
+            fig.savefig(self.out_path / f"{pl_module.hparams['Modeltype']}_{num_classes}_confmatrix.png")
