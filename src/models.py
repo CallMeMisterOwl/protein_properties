@@ -8,6 +8,116 @@ from torchmetrics.functional.regression import pearson_corrcoef
 from torchmetrics.functional.classification import f1_score, matthews_corrcoef, accuracy
 from typing import Optional
     
+class BfactorBaseline(pl.LightningModule):
+    def __init__(self, 
+                 num_classes: Literal[1, 2, 3, 10] = 1,
+                 class_weights: torch.Tensor = None,
+                 lr: float = 1e-3,
+                 weight_decay: float = 0.0,
+                 **kwargs):
+        super().__init__()
+        self.num_classes = num_classes
+        self.class_weights = class_weights
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.loss_fn = None
+        self.model = nn.Sequential(
+            nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1),
+        )
+        self.lr_scheduler = kwargs.get("lr_scheduler", None)
+        self.output_path = kwargs.get("output_path", ".")
+        if self.num_classes == 1:
+            torch.nn.init.xavier_uniform_(self.model[0].weight)
+            self.model[0].bias.data.fill_(0.01)
+
+        self.hparams["Modeltype"] = "BfactorBaseline"
+        self.mask_value = -1 if self.num_classes > 1 else -1.0
+        self.save_hyperparameters()
+        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
+        self.activation = nn.Identity() if self.num_classes != 1 else nn.Sigmoid()
+        
+
+    def forward(self, x):
+        x_out = self.model(x)
+        return self.activation(x_out)
+    
+    def training_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != self.mask_value)
+        
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()
+        mask = (y != self.mask_value)
+    
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        mask = (y != self.mask_value)
+        loss = self._loss(y_hat[mask], y[mask])
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+        for t in self._accuracy(y_hat[mask], y[mask]):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+        if self.num_classes == 1:
+            return y_hat[mask].squeeze().cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+        elif self.num_classes < 3:
+            # For binary predictions flatten the array
+            return self.sigmoid(y_hat[mask].squeeze()).cpu().numpy().flatten(), y[mask].cpu().numpy().squeeze()
+        elif self.num_classes > 2:
+            # For multiclass predictions don't
+            return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
+    
+    def _configure_optimizer(self, optim_config = None):
+        
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay
+        )
+        #raise ValueError(f"Invalid optimizer {optim_config.optimize}. See --help")
+
+    def _configure_scheduler(self, optimizer: torch.optim.Optimizer):
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode="min", patience=3)
+
+    def configure_optimizers(self):
+        optimizer = self._configure_optimizer()
+        return [optimizer]#, [{"schduler": self._configure_scheduler(optimizer), "interval": "epoch"}]
+    
+    def _accuracy(self, y_hat, y):
+        metrics = []
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+            ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
+            return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
+
+    def _loss(self, y_hat, y):
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y, self.class_weights)
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
+        return F.cross_entropy(y_hat, y, weight=self.class_weights)
 
 class SASABaseline(pl.LightningModule):
     def __init__(self, 
