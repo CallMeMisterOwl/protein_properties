@@ -12,6 +12,7 @@ data:
   init_args:
     config:
       data_dir: /mnt/project/hasler/protein_properties/data/bfactor
+      embedding_path: /mnt/project/hasler/protein_properties/data/embeddings_sasa_bfactor.h5
       np_path: /mnt/project/hasler/protein_properties/data/bfactor/np
       num_workers: 8
       
