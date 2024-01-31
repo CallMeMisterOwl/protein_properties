@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch
 from torch import nn
 from torchmetrics.functional.regression import pearson_corrcoef
-from torchmetrics.functional.classification import binary_f1_score, multiclass_f1_score, binary_accuracy, multiclass_accuracy, matthews_corrcoef
+from torchmetrics.functional.classification import f1_score, matthews_corrcoef, accuracy
 from typing import Optional
     
 
@@ -103,12 +103,13 @@ class SASABaseline(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        if self.num_classes == 1:
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+            ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
             return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -226,12 +227,13 @@ class SASALSTM(pl.LightningModule):
 
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        if self.num_classes == 1:
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+            ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
             return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -364,12 +366,13 @@ class SASACNN(pl.LightningModule):
 
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        if self.num_classes == 1:
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+            ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
             return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.loss_fn is not None:
@@ -423,12 +426,13 @@ class EnsembleModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        if self.num_classes == 1:
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+        ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
             return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         if self.num_classes == 1:
@@ -436,7 +440,6 @@ class EnsembleModel(pl.LightningModule):
         elif self.num_classes == 2:
             return F.binary_cross_entropy_with_logits(y_hat, y)
         return F.cross_entropy(y_hat, y)
-
 
 class SASADummyModel(pl.LightningModule):
     def __init__(self, num_classes, label_distribution: torch.Tensor = None):
@@ -511,12 +514,13 @@ class SASADummyModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        if self.num_classes == 1:
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        if self.num_classes != 1:
+            return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+            ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+        ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        else:
             return [("MAE", F.l1_loss(y_hat, y)), ("PCC", pearson_corrcoef(y_hat, y))]
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
 
     def _loss(self, y_hat, y):
         
@@ -530,7 +534,6 @@ class SASADummyModel(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.parameters(),
         )
-    
 
 class GlycoModel(pl.LightningModule):
     def __init__(self,
@@ -597,7 +600,6 @@ class GlycoModel(pl.LightningModule):
             x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        
         loss = self._loss(y_hat, y)
         if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
@@ -605,8 +607,13 @@ class GlycoModel(pl.LightningModule):
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
             self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+
         if self.num_classes == 2:
-            return self.sigmoid(y_hat).cpu().numpy().squeeze(), y.cpu().numpy().squeeze()
+            if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
+                y_hat = y_hat.unsqueeze(0)
+                y = y.unsqueeze(0)
+            return self.sigmoid(y_hat).cpu().numpy().squeeze(0), y.cpu().numpy().squeeze(0)
+        
         return self.softmax(y_hat).cpu().numpy(), y.cpu().numpy()
         
     
@@ -628,11 +635,11 @@ class GlycoModel(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        if self.num_classes == 2:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="binary", num_classes=self.num_classes)), ("ACC", binary_accuracy(y_hat, y))]
-        else:
-            return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-            ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+        ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+        ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
+        
 
     def _loss(self, y_hat, y):
         if len(y_hat.shape ) != 2:
@@ -645,7 +652,6 @@ class GlycoModel(pl.LightningModule):
         elif self.num_classes == 2:
             return F.binary_cross_entropy_with_logits(y_hat, y, pos_weight=self.class_weights)
         return F.cross_entropy(y_hat, y, weight=self.class_weights)
-
 
 class GlycoDummy(pl.LightningModule):
     def __init__(self,
@@ -733,9 +739,10 @@ class GlycoDummy(pl.LightningModule):
     
     def _accuracy(self, y_hat, y):
         metrics = []
-        
-        return [("MCC", matthews_corrcoef(y_hat, y, task="multiclass", num_classes=self.num_classes)), 
-        ("ACC", multiclass_accuracy(y_hat, y, num_classes=self.num_classes))]
+        task = "binary" if self.num_classes == 2 else "multiclass"
+        return [("MCC", matthews_corrcoef(y_hat, y, task=task, num_classes=self.num_classes)), 
+        ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
+        ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
 
     def _loss(self, y_hat, y):
         if len(y_hat.shape ) != 2:
