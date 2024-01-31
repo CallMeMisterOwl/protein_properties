@@ -14,7 +14,7 @@ data:
       classes: {"T": 0, "O": 1}
       data_dir: /mnt/project/hasler/protein_properties/data/glyco
       embedding_path: /mnt/project/hasler/protein_properties/data/glyco/glyco_embeddings.h5
-      np_path: /mnt/project/hasler/protein_properties/data/glyco/
+      np_path: /mnt/project/hasler/protein_properties/data/glyco/np/
       num_workers: 8
       
   
