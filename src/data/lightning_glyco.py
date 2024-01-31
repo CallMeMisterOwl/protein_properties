@@ -15,7 +15,7 @@ class GlycoDataConfig():
     classes: dict
     data_dir: str = '../../data'
     embedding_path: str = '../../data/glyco/glyco_embeddings.h5'
-    np_path: str = '../../data/'
+    np_path: str = '../../data/np'
     num_workers: int = 4
     batch_size: int = 32
     
