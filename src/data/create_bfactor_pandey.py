@@ -206,7 +206,7 @@ def main(args: Optional[list] = None):
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
 
-    fasta_path = args.fasta_path
+    fasta_path = str(args.fasta_path)
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
