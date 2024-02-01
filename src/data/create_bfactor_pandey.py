@@ -11,7 +11,7 @@ from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
 from biotite.sequence import ProteinSequence, AlphabetError
-from fasta import Fasta
+from .fasta import Fasta
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from utils import align_sequences_nw
