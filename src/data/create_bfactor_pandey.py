@@ -214,7 +214,7 @@ def main(args: Optional[list] = None):
     global aa_dict
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
-    all_ids = [Fasta(fasta_path).keys() for fasta_path in fasta_files]
+    all_ids = [Fasta(path=fasta_path).keys() for fasta_path in fasta_files]
     fasta = Fasta(fasta_path)
     bfactor_full_features, protein_list = calculate_scores(all_ids, pdb_path, args.n_processes, mapping_fasta)
     np.save(os.path.join(output_path, "bfactor_full_features.npy"), bfactor_full_features)
