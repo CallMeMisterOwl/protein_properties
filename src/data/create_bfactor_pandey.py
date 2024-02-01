@@ -186,7 +186,7 @@ def main(args: Optional[list] = None):
     # Initialize ArgumentParser
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-s', '--fasta_files', nargs='+', help='Path(s) to fasta files')
+    parser.add_argument('-s', '--fasta_path', help='Path to fasta files')
     parser.add_argument('-p', '--pdb_path', required=True, help='Path to PDB structures')
     parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
@@ -206,7 +206,7 @@ def main(args: Optional[list] = None):
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
 
-    fasta_files = args.fasta_files
+    fasta_file = args.fasta_file
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
@@ -214,7 +214,8 @@ def main(args: Optional[list] = None):
     global aa_dict
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
-    all_ids = [Fasta(path=fasta_path).keys() for fasta_path in fasta_files]
+    fasta_paths = [os.path.join(fasta_file, fasta, "_norm.o") for fasta in ["train", "val", "test", "blind_test"]]
+    all_ids = [Fasta(path=fasta_path).keys() for fasta_path in fasta_paths]
     fasta = Fasta(fasta_path)
     bfactor_full_features, protein_list = calculate_scores(all_ids, pdb_path, args.n_processes, mapping_fasta)
     np.save(os.path.join(output_path, "bfactor_full_features.npy"), bfactor_full_features)
