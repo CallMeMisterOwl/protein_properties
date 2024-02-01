@@ -216,7 +216,6 @@ def main(args: Optional[list] = None):
         aa_dict = json.load(f)
     fasta_paths = [os.path.join(fasta_path, f"{fasta}_norm.o") for fasta in ["train", "val", "test", "blind_test"]]
     all_ids = [Fasta(path=fasta_path).keys() for fasta_path in fasta_paths]
-    fasta = Fasta(fasta_path)
     bfactor_full_features, protein_list = calculate_scores(all_ids, pdb_path, args.n_processes, mapping_fasta)
     np.save(os.path.join(output_path, "bfactor_full_features.npy"), bfactor_full_features)
     with open(os.path.join(output_path, "protein_list.txt"), "w") as f:
