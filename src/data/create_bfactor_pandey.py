@@ -26,8 +26,8 @@ one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
 def create_dataset_ala_pandey(protein: str, 
                                  pdb_path: str,
-                                 protein_seq: list,
-                                 map_missing_res: list): 
+                                 map_missing_res: list,
+                                 protein_seq: list): 
                                  
     cif_header: str = protein.split('-')[0]
     
