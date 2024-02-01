@@ -40,7 +40,12 @@ def create_dataset_ala_pandey(protein: str,
     struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
 
     # Thank you biotite for this wonderful class, NOT!
-    seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
+    try:
+        seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
+    except AlphabetError:
+        print(f"Protein {protein} contains non-canonical amino acids, skipping...")
+        print(f"Protein sequence: {protein_seq}")
+        sys.exit(1)
 
     seq_length = len(seq)
     chain_id = protein.split('-')[1]
