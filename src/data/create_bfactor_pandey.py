@@ -2,7 +2,6 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import sys
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import pandas as pd
 from typing import Optional
 from tempfile import gettempdir
@@ -12,8 +11,9 @@ from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
 import biotite.structure as biostruc
 import biotite.database.rcsb as rcsb
 from biotite.sequence import ProteinSequence, AlphabetError
-from data.fasta import Fasta
+from fasta import Fasta
 from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from utils import align_sequences_nw
 import argparse
 import multiprocessing as mp
