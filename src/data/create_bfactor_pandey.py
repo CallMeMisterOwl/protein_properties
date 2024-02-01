@@ -206,7 +206,7 @@ def main(args: Optional[list] = None):
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
 
-    fasta_file = args.fasta_file
+    fasta_path = args.fasta_path
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
@@ -214,7 +214,7 @@ def main(args: Optional[list] = None):
     global aa_dict
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
-    fasta_paths = [os.path.join(fasta_file, fasta, "_norm.o") for fasta in ["train", "val", "test", "blind_test"]]
+    fasta_paths = [os.path.join(fasta_path, fasta, "_norm.o") for fasta in ["train", "val", "test", "blind_test"]]
     all_ids = [Fasta(path=fasta_path).keys() for fasta_path in fasta_paths]
     fasta = Fasta(fasta_path)
     bfactor_full_features, protein_list = calculate_scores(all_ids, pdb_path, args.n_processes, mapping_fasta)
