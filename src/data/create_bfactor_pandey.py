@@ -21,6 +21,7 @@ import os
 
 
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
+counter = 0
 
 def create_dataset_ala_pandey(protein: str, 
                                  pdb_path: str,
@@ -66,9 +67,16 @@ def create_dataset_ala_pandey(protein: str,
                 struct_seq.append('X')
     struct_ss = biostruc.annotate_sse(struct)
     ca_list = np.array([atom.coord for atom in struct if atom.atom_name == "CA"])
-    assert len(ca_list) == len(struct_seq) == len(struct_ss), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) and len SS ({len(struct_ss)}) do not match. Protein: {protein}"
-    # TODO f this man, assert is triggered for 1 protein, need to investigate
-    # I hate my life
+    try:
+        assert len(ca_list) == len(struct_seq) == len(struct_ss), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) and len SS ({len(struct_ss)}) do not match. Protein: {protein}"
+        # TODO f this man, assert is triggered for 1 protein, need to investigate
+        # I hate my life
+    except AssertionError as e:
+        print(e)
+        print(counter)
+        print(f"Skipping protein {protein}...")
+        counter += 1
+        return protein, None
 
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
     struct_seq = [x if x in codes else "-" for x in struct_seq]
@@ -186,6 +194,7 @@ def calculate_scores(ids: list, pdb_path: str, nprocesses: int, mapping_fasta: F
         results = [r.get() for r in tqdm(results)]
     full_features = np.array([features for _, features in results])
     protein_list = [protein for protein, _ in results]
+    sys.exit(1)
     return full_features, protein_list
 
 
