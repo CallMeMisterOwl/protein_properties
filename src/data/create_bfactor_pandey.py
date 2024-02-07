@@ -19,7 +19,6 @@ import argparse
 import multiprocessing as mp
 import os
 
-counter_e = 0
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
 def create_dataset_ala_pandey(protein: str, 
@@ -72,9 +71,7 @@ def create_dataset_ala_pandey(protein: str,
         # I hate my life
     except AssertionError as e:
         print(e)
-        print(counter_e)
         print(f"Skipping protein {protein}...")
-        counter_e += 1
         return protein, None
 
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
@@ -224,8 +221,6 @@ def main(args: Optional[list] = None):
     # create dataframe with one-hot encoding for each amino acid
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
-    global counter_e
-    counter_e = 0
 
     fasta_path = str(args.fasta_path)
     pdb_path = args.pdb_path
