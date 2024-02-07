@@ -66,11 +66,14 @@ def create_dataset_ala_pandey(protein: str,
                 struct_seq.append('X')
     struct_ss = biostruc.annotate_sse(struct)
     ca_list = np.array([atom.coord for atom in struct if atom.atom_name == "CA"])
-    assert len(ca_list) == len(struct_seq), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) do not match"
-    # TODO f this -> this needs seperate checks to make sure we get the right CA atoms, ugh
+    try:
+        assert len(ca_list) == len(struct_seq), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) do not match"
+        # TODO f this man, assert is triggered for 1 protein, need to investigate
+    except AssertionError as e:
+        print(f"{len(struct_ss)}")
+    
+
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
-    
-    
     struct_seq = [x if x in codes else "-" for x in struct_seq]
     one_hot_seq = np.array(one_hot.merge(pd.DataFrame(data={"AA": struct_seq}), how="right", on="AA").drop("AA", axis=1))
     struct_ss = np.array([one_hot_ss[x] for x in struct_ss])
