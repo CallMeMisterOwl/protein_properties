@@ -78,9 +78,7 @@ def create_dataset_ala_pandey(protein: str,
     # mask the residues that are not in the PDB files, due to disorder
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
-
-    assert len(struct_ss) == len(seq), f"Length of sequence ({len(seq)}) and disorder residues ({len(disorder_residues)}) do not match"
-
+    assert one_hot_seq.shape[0] == len(struct_ss) == len(ca_coord_norm), f"Length of one-hot sequence ({one_hot_seq.shape[0]}), secondary structure ({len(struct_ss)}) and CA coordinates ({len(ca_coord_norm)}) do not match"
     final_features = np.concatenate([one_hot_seq, struct_ss, ca_coord_norm], axis=1)
     if len(disorder_residues) != final_features.shape[0]:
         final_features_masked = np.zeros(len(disorder_residues))
