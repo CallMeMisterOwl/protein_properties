@@ -27,7 +27,6 @@ def create_dataset_ala_pandey(protein: str,
                                  protein_seq: list): 
                                  
     cif_header: str = protein.split('-')[0]
-    counter_e = counter_e
     try:
         pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
     except FileNotFoundError:
