@@ -71,7 +71,8 @@ def create_dataset_ala_pandey(protein: str,
         # TODO f this man, assert is triggered for 1 protein, need to investigate
     except AssertionError as e:
         print(f"{len(struct_ss)}")
-    
+        sys.exit(1)
+
 
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
     struct_seq = [x if x in codes else "-" for x in struct_seq]
