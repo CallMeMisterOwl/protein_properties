@@ -21,6 +21,7 @@ import os
 
 aa_dict = None
 one_hot = None
+codes = None
 
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
@@ -155,7 +156,7 @@ def create_dataset_ala_pandey(protein: str,
         start_end_pp[0], start_end_pp[-1] = 1, 1
         final_features_masked = np.concatenate([final_features_masked, start_end_pp[:, np.newaxis]], axis=1)
         return protein, final_features_masked.tolist()
-        
+
     start_end_pp = np.zeros(final_features.shape[0])
     start_end_pp[0], start_end_pp[-1] = 1, 1
     final_features = np.concatenate([final_features, start_end_pp[:, np.newaxis]], axis=1)    
