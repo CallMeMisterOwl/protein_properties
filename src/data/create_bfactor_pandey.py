@@ -119,7 +119,7 @@ def create_dataset_ala_pandey(protein: str,
                         sasa_index.append(counter)
                         counter += 1
                 try:
-                    final_features_masked[seq_chain_overlap_cut] = final_features[sasa_index]
+                    final_features_masked[seq_chain_overlap_cut, :] = final_features[sasa_index]
                 except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
                     print(i)
@@ -128,7 +128,7 @@ def create_dataset_ala_pandey(protein: str,
 
             elif np.any(seq_chain_overlap == False):
                 try:
-                    final_features_masked[seq_chain_overlap] = final_features
+                    final_features_masked[seq_chain_overlap, :] = final_features
                 except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
                     print(i)
@@ -137,7 +137,7 @@ def create_dataset_ala_pandey(protein: str,
             
             elif np.any(primary_seq_overlap == False):
                 try:
-                    final_features_masked = final_features[primary_seq_overlap]
+                    final_features_masked = final_features[primary_seq_overlap, :]
                 except IndexError as i:
                     print(f'Skipping protein {protein}...\n')
                     print(i)
