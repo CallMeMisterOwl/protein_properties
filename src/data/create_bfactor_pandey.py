@@ -19,9 +19,6 @@ import argparse
 import multiprocessing as mp
 import os
 
-aa_dict = None
-one_hot = None
-codes = None
 
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
@@ -211,9 +208,12 @@ def main(args: Optional[list] = None):
     # Access arguments
 
     map_missing_res = Fasta(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"))
+
+    global codes
     codes = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
             'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '-']
     # create matrix with diagonal 1
+    global one_hot
     one_hot = np.identity(len(codes))
     # create dataframe with one-hot encoding for each amino acid
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
