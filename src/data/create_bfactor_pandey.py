@@ -19,7 +19,7 @@ import argparse
 import multiprocessing as mp
 import os
 
-
+counter_e = 0
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
 def create_dataset_ala_pandey(protein: str, 
