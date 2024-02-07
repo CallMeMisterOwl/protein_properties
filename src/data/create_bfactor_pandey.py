@@ -21,7 +21,6 @@ import os
 
 
 one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
-counter = 0
 
 def create_dataset_ala_pandey(protein: str, 
                                  pdb_path: str,
@@ -225,6 +224,8 @@ def main(args: Optional[list] = None):
     # create dataframe with one-hot encoding for each amino acid
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
+    global counter
+    counter = 0
 
     fasta_path = str(args.fasta_path)
     pdb_path = args.pdb_path
