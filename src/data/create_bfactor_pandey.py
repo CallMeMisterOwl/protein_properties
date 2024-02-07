@@ -24,7 +24,7 @@ one_hot_ss = {"a": [1, 0, 0], "b": [0, 1, 0], "c": [0, 0, 1]}
 
 def create_dataset_ala_pandey(protein: str, 
                                  pdb_path: str,
-                                 map_missing_res: list,
+                                 map_missing_res: list[str],
                                  protein_seq: list): 
                                  
     cif_header: str = protein.split('-')[0]
@@ -76,7 +76,7 @@ def create_dataset_ala_pandey(protein: str,
     struct_ss = np.array([one_hot_ss[x] for x in struct_ss])
 
     # mask the residues that are not in the PDB files, due to disorder
-    disorder_residues = list("".join(map_missing_res[":".join((protein.upper() + "-disorder").split("-"))]))
+    disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
 
     assert len(struct_ss) == len(seq), f"Length of sequence ({len(seq)}) and disorder residues ({len(disorder_residues)}) do not match"
