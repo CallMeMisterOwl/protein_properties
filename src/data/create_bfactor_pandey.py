@@ -72,9 +72,9 @@ def create_dataset_ala_pandey(protein: str,
         # I hate my life
     except AssertionError as e:
         print(e)
-        print(counter)
+        print(counter_e)
         print(f"Skipping protein {protein}...")
-        counter += 1
+        counter_e += 1
         return protein, None
 
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
@@ -224,8 +224,8 @@ def main(args: Optional[list] = None):
     # create dataframe with one-hot encoding for each amino acid
     one_hot = pd.DataFrame(one_hot, index=codes, columns=codes)
     one_hot["AA"] = one_hot.index
-    global counter
-    counter = 0
+    global counter_e
+    counter_e = 0
 
     fasta_path = str(args.fasta_path)
     pdb_path = args.pdb_path
