@@ -57,15 +57,24 @@ def create_dataset_ala_pandey(protein: str,
         struct = struct[chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
     
     struct = struct[biostruc.filter_amino_acids(struct)]
+    struct_seq = []
+    for aa in biostruc.get_residues(struct)[1]:
+        try:
+            struct_seq.append(ProteinSequence.convert_letter_3to1(aa))
+        except KeyError:
+            try:
+                struct_seq.append(aa_dict[aa])
+            except KeyError:
+                struct_seq.append('X')
     struct_ss = biostruc.annotate_sse(struct)
     ca_list = np.array([atom.coord for atom in struct if atom.atom_name == "CA"])
-    assert len(ca_list) == len(seq), f"Length of sequence ({len(seq)}) and structure ({len(ca_list)}) do not match"
+    assert len(ca_list) == len(struct_seq), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) do not match"
+    # TODO f this -> this needs seperate checks to make sure we get the right CA atoms, ugh
     ca_coord_norm = (ca_list - np.mean(ca_list, axis=0)) / np.std(ca_list, axis=0)
-    start_end_pp = np.zeros(len(seq))
-    start_end_pp[0], start_end_pp[-1] = 1, 1
     
-    seq = [x if x in codes else "-" for x in seq]
-    one_hot_seq = np.array(one_hot.merge(pd.DataFrame(data={"AA": seq}), how="right", on="AA").drop("AA", axis=1))
+    
+    struct_seq = [x if x in codes else "-" for x in struct_seq]
+    one_hot_seq = np.array(one_hot.merge(pd.DataFrame(data={"AA": struct_seq}), how="right", on="AA").drop("AA", axis=1))
     struct_ss = np.array([one_hot_ss[x] for x in struct_ss])
 
     # mask the residues that are not in the PDB files, due to disorder
@@ -74,7 +83,7 @@ def create_dataset_ala_pandey(protein: str,
 
     assert len(struct_ss) == len(seq), f"Length of sequence ({len(seq)}) and disorder residues ({len(disorder_residues)}) do not match"
 
-    final_features = np.concatenate([one_hot_seq, struct_ss, ca_coord_norm, start_end_pp[:, np.newaxis]], axis=1)
+    final_features = np.concatenate([one_hot_seq, struct_ss, ca_coord_norm], axis=1)
     if len(disorder_residues) != final_features.shape[0]:
         final_features_masked = np.zeros(len(disorder_residues))
 
@@ -86,17 +95,8 @@ def create_dataset_ala_pandey(protein: str,
             
             final_features_masked[non_disorder_indices] = final_features
         except ValueError:
-            seq_chain_a_single = []
-            for aa in biostruc.get_residues(struct)[1]:
-                try:
-                    seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
-                except KeyError:
-                    try:
-                        seq_chain_a_single.append(aa_dict[aa])
-                    except KeyError:
-                        seq_chain_a_single.append('X')
-            # TODO shouldn't this be just seq against seq_chain_a_single ?
-            alignment = align_sequences_nw(seq, "".join(seq_chain_a_single))
+            
+            alignment = align_sequences_nw(seq, "".join(struct_seq))
             primary_seq_overlap = np.array(list(alignment[0])) != '-'
             seq_chain_overlap = np.array(list(alignment[1])) != '-'
 
@@ -151,7 +151,14 @@ def create_dataset_ala_pandey(protein: str,
             else:
                 print(f"Investiage protein {protein}")
                 return protein, None, None
+        start_end_pp = np.zeros(final_features_masked.shape[0])
+        start_end_pp[0], start_end_pp[-1] = 1, 1
+        final_features_masked = np.concatenate([final_features_masked, start_end_pp[:, np.newaxis]], axis=1)
         return protein, final_features_masked.tolist()
+        
+    start_end_pp = np.zeros(final_features.shape[0])
+    start_end_pp[0], start_end_pp[-1] = 1, 1
+    final_features = np.concatenate([final_features, start_end_pp[:, np.newaxis]], axis=1)    
     return protein, final_features.tolist()
 
 
