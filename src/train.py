@@ -32,7 +32,8 @@ def main():
     cli.trainer.validate(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())
     if not cli.config.HP:
         cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
-
+    else:
+        cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader(), verbose=True)
 
 if __name__ == "__main__":
     main()

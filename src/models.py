@@ -678,15 +678,13 @@ class GlycoModel(pl.LightningModule):
             x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()   
-            
         loss = self._loss(y_hat, y)
-        
         if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
-            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
+            self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -701,7 +699,7 @@ class GlycoModel(pl.LightningModule):
             y = y.unsqueeze(0)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
-            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False)
+            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
         return loss
     
     def test_step(self, batch, batch_idx):
@@ -716,7 +714,7 @@ class GlycoModel(pl.LightningModule):
             y = y.unsqueeze(0)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
         for t in self._accuracy(y_hat, y):
-            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False)
+            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
 
         if self.num_classes == 2:
             if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
