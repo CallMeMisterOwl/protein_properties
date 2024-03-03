@@ -67,6 +67,9 @@ class GroupedBatchSampler(BatchSampler):
     def __iter__(self):
         for batch in self.batches:
             yield batch
+    
+    def __len__(self):
+        return len(self.batches)
 
 
 class GlycoDataModule(pl.LightningDataModule):
