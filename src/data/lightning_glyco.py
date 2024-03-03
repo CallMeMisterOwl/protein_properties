@@ -17,7 +17,7 @@ class GlycoDataConfig():
     embedding_path: str = '../../data/glyco/glyco_embeddings.h5'
     np_path: str = '../../data/np'
     num_workers: int = 4
-    batch_size: int = 32
+    batch_size: int = 64
     
 
 import torch
@@ -31,29 +31,34 @@ Additionally, the groups should be shuffled and so should the samples within the
 You need to fill the batch with groups of samples until the batch is full. A batch can contain samples from multiple proteins.
 """
 class GroupedBatchSampler(BatchSampler):
-    def __init__(self, protein_ids, batch_size, drop_last=False):
+    def __init__(self, protein_ids, batch_size: int, drop_last: bool = False, shuffle: bool = True):
         self.protein_ids = protein_ids
         self.batch_size = batch_size
+        if drop_last:
+            NotImplementedError("Drop last not implemented yet!")
         self.drop_last = False
         self.batches = None
+        self.shuffle = shuffle
         self._create_batches()
 
     def _create_batches(self):
         self.batches = []
-
         protein_ids, counts = np.unique(self.protein_ids, return_counts=True)
-        shuffle_mask = np.random.permutation(len(protein_ids))
-        protein_ids, counts = protein_ids[shuffle_mask], counts[shuffle_mask]
+        if self.shuffle:
+            shuffle_mask = np.random.permutation(len(protein_ids))
+            protein_ids, counts = protein_ids[shuffle_mask], counts[shuffle_mask]
 
-        batch = np.array([])
+        batch = []
         for pid, count in zip(protein_ids, counts):
-            indices = np.where(self.protein_ids == pid)[0]
+            indices = np.where(self.protein_ids == pid)[0].astype(int).tolist()
             np.random.shuffle(indices)
             if len(batch) + len(indices) > self.batch_size:
-                self.batches.append(batch)
-                batch = indices
                 
-            batch = np.append(batch, indices)
+                if not len(indices) >= self.batch_size:
+                    self.batches.append(batch)
+                    batch = indices
+                
+            batch.extend(indices)
             if len(batch) >= self.batch_size:
                 self.batches.append(batch)
                 
@@ -158,7 +163,7 @@ class GlycoDataModule(pl.LightningDataModule):
         torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt")
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, num_workers=self.config.num_workers, sampler=GroupedBatchSampler(self.train_dataset.pids, self.config.batch_size))
+        return DataLoader(self.train_dataset, num_workers=self.config.num_workers, batch_sampler=GroupedBatchSampler(self.train_dataset.pids, self.config.batch_size))
     
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
