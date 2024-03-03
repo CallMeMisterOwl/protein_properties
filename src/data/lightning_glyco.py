@@ -147,7 +147,7 @@ class GlycoDataModule(pl.LightningDataModule):
         
         # calculate class weights for the loss function
         #ys = np.apply_along_axis(np.concatenate, 0, self.train_dataset.y)
-        counts = np.unique(ys, return_counts=True)[1]
+        counts = np.unique(self.train_dataset.y, return_counts=True)[1]
         # check if class weights are already calculated
 
         if len(self.config.classes) < 3:
@@ -223,7 +223,7 @@ class GlycoDataset(Dataset):
                 continue
             X.extend(embedding[samples])
             y.extend(self.to_classes(labels[samples]))
-            pids.extend(pid*labels[samples].shape[0])
+            pids.extend([pid]*labels[samples].shape[0])
 
         self.X = np.array(X)
         self.y = np.array(y)
