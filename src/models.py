@@ -752,7 +752,7 @@ class GlycoModel(pl.LightningModule):
         
 
     def _loss(self, y_hat, y):
-        if len(y_hat.shape ) != 2:
+        if len(y_hat.shape) != 2:
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         if self.loss_fn is not None:
