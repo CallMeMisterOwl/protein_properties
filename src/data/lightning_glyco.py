@@ -42,7 +42,7 @@ class GroupedBatchSampler(BatchSampler):
         self.batches = []
 
         protein_ids, counts = np.unique(self.protein_ids, return_counts=True)
-        shuffle_mask = numpy.random.permutation(len(protein_ids))
+        shuffle_mask = np.random.permutation(len(protein_ids))
         protein_ids, counts = protein_ids[shuffle_mask], counts[shuffle_mask]
 
         batch = np.array([])
@@ -106,7 +106,7 @@ class GlycoDataModule(pl.LightningDataModule):
 
         # Shuffel train data #reproducibility #science
         
-        # Create an array of indices that correspond to the order of IDs in 'b'
+        """# Create an array of indices that correspond to the order of IDs in 'b'
         if not (self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt").exists():
             self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
             np.save(self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt", self.shuffled_ids)
@@ -120,7 +120,7 @@ class GlycoDataModule(pl.LightningDataModule):
         
         self.train_dataset.X = self.train_dataset.X[sorted_indices]
         self.train_dataset.y = self.train_dataset.y[sorted_indices]
-        self.train_dataset.pids = self.shuffled_ids
+        self.train_dataset.pids = self.shuffled_ids"""
 
         if len(self.config.classes) < 3:
             self.train_dataset.y = np.array([arr.astype(np.float16) 
@@ -146,7 +146,7 @@ class GlycoDataModule(pl.LightningDataModule):
             return
         
         # calculate class weights for the loss function
-        ys = np.apply_along_axis(np.concatenate, 0, self.train_dataset.y)
+        #ys = np.apply_along_axis(np.concatenate, 0, self.train_dataset.y)
         counts = np.unique(ys, return_counts=True)[1]
         # check if class weights are already calculated
 
@@ -158,7 +158,7 @@ class GlycoDataModule(pl.LightningDataModule):
         torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt")
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
+        return DataLoader(self.train_dataset, num_workers=self.config.num_workers, sampler=GroupedBatchSampler(self.train_dataset.pids, self.config.batch_size))
     
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
@@ -221,13 +221,13 @@ class GlycoDataset(Dataset):
             except:
                 print(f"Protein {pid}  not found in embeddings!")
                 continue
-            X.append(embedding[samples])
-            y.append(self.to_classes(labels[samples]))
-            pids.append(pid)
+            X.extend(embedding[samples])
+            y.extend(self.to_classes(labels[samples]))
+            pids.extend(pid*labels[samples].shape[0])
 
-        self.X = np.array(X, dtype=object)
-        self.y = np.array(y, dtype=object)
-        self.pids = np.array(pids, dtype=object)
+        self.X = np.array(X)
+        self.y = np.array(y)
+        self.pids = np.array(pids)
         np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.X)
         np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.y)
         np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.pids)
