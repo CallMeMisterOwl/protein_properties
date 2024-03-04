@@ -224,20 +224,18 @@ class GlycoDataset(Dataset):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes) #bool array
 
-            
-
-            if not np.any(samples):
-                continue
-                
             # if class 2 -> filter out the negatives of the other classes !!!
             if len(self.config.classes) < 3:
-                temp_labels = labels[samples]
+                
                 seq = np.array(list(seqs[1]))
                 if "N" in classes:
                     # remove indices from samples where the label in temp_labels is T (negative) AND the character in seq at the same position is not N
                     samples = samples & ~((labels == "T") & (seq != "N"))
                 else:
                     samples = samples & ~((labels == "T") & (seq == "N"))
+            
+            if not np.any(samples):
+                continue
 
             try:
                 embedding = embeddings[pid.replace("-", "_").replace(".", "_")][()]
