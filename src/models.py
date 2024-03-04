@@ -667,10 +667,14 @@ class GlycoModel(pl.LightningModule):
         self.save_hyperparameters()
         self.softmax = nn.Softmax(dim=1)
         self.sigmoid = nn.Sigmoid()
+
+        self.val_preds = []
+        self.val_ys = []
         
 
     def forward(self, x):
-        return self.model(x)
+
+        return self.sigmoid(self.model(x)) if self.num_classes == 2 else self.softmax(self.model(x))
     
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -698,9 +702,17 @@ class GlycoModel(pl.LightningModule):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
+        self.val_preds.append(y_hat)
+        self.val_ys.append(y)
+        return loss
+
+    def on_validation_epoch_end(self):
+        y_hat = torch.cat(self.val_preds, dim=0)
+        y = torch.cat(self.val_ys, dim=0)
         for t in self._accuracy(y_hat, y):
             self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
-        return loss
+        self.val_preds.clear()
+        self.val_ys.clear()
     
     def test_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -720,9 +732,9 @@ class GlycoModel(pl.LightningModule):
             if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
                 y_hat = y_hat.unsqueeze(0)
                 y = y.unsqueeze(0)
-            return self.sigmoid(y_hat).cpu().numpy().squeeze(0), y.cpu().numpy().squeeze(0)
+            return y_hat.cpu().numpy().squeeze(0), y.cpu().numpy().squeeze(0)
         
-        return self.softmax(y_hat).cpu().numpy(), y.cpu().numpy()
+        return y_hat.cpu().numpy(), y.cpu().numpy()
         
     
     def _configure_optimizer(self, optim_config = None):
@@ -753,7 +765,7 @@ class GlycoModel(pl.LightningModule):
         if len(y_hat.shape) != 2:
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
-        if self.loss_fn is not None:
+        if self.loss_fn is not None: 
             return self.loss_fn(y_hat, y, self.class_weights)
         if self.num_classes == 1:
             return F.mse_loss(y_hat, y)

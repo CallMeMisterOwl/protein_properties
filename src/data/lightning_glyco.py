@@ -219,11 +219,26 @@ class GlycoDataset(Dataset):
         y = []
         pids = []
         classes = np.array(list(self.config.classes.keys()))
+        
         for pid, seqs in tqdm(fasta.items()):
             labels = np.array(list(seqs[1]))
             samples = np.isin(labels, classes)
+
+            
+
             if not np.any(samples):
                 continue
+                
+            # if class 2 -> filter out the negatives of the other classes !!!
+            if len(self.config.classes) < 3:
+                temp_labels = labels[samples]
+                seq = np.array(list(seqs[1]))[samples]
+                if "N" in classes:
+                    # remove indices from samples where the label in temp_labels is T (negative) AND the character in seq at the same position is not N
+                    samples = samples[~((temp_labels == "T") & (seq != "N"))]
+                else:
+                    samples = samples[~((temp_labels == "T") & (seq == "N"))]
+
             try:
                 embedding = embeddings[pid.replace("-", "_").replace(".", "_")][()]
             except:
@@ -232,7 +247,7 @@ class GlycoDataset(Dataset):
             X.extend(embedding[samples])
             y.extend(self.to_classes(labels[samples]))
             pids.extend([pid]*labels[samples].shape[0])
-
+        
         self.X = np.array(X)
         self.y = np.array(y)
         self.pids = np.array(pids)
