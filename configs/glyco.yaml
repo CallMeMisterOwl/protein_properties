@@ -5,7 +5,7 @@ model:
   init_args:
     lr: 1e-3
     num_layers: 2
-    num_hidden: 64
+    num_hidden: [64]
 
 
 data:
