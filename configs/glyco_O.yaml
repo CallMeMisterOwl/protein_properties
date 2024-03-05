@@ -1,5 +1,5 @@
 output_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
-HP: False
+HP: True
 model:
   class_path: src.models.GlycoModel
   init_args:

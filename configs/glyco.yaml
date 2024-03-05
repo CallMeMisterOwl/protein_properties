@@ -1,5 +1,5 @@
 output_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
-HP: False
+HP: True
 model:
   class_path: src.models.GlycoModel
   init_args:
@@ -15,14 +15,13 @@ data:
       embedding_path: /mnt/project/hasler/protein_properties/data/glyco/glyco_embeddings.h5
       np_path: /mnt/project/hasler/protein_properties/data/glyco/np/
       num_workers: 8
-      
+      batch_size: 64
       
 
 trainer:
   accelerator: gpu
   devices: 1
   precision: 16-mixed
-  accumulate_grad_batches: 64
   max_epochs: 50
   num_sanity_val_steps: 2
   callbacks:
