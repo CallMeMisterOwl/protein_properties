@@ -31,7 +31,7 @@ Additionally, the groups should be shuffled and so should the samples within the
 You need to fill the batch with groups of samples until the batch is full. A batch can contain samples from multiple proteins.
 """
 class GroupedBatchSampler(BatchSampler):
-    def __init__(self, protein_ids, batch_size: int, drop_last: bool = False, shuffle: bool = True):
+    def __init__(self, protein_ids, batch_size: int, drop_last: bool = False, shuffle: bool = False):
         self.protein_ids = protein_ids
         self.batch_size = batch_size
         if drop_last:
