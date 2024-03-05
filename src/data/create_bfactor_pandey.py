@@ -189,7 +189,6 @@ def calculate_scores(ids: list, pdb_path: str, nprocesses: int, mapping_fasta: F
         results = [r.get() for r in tqdm(results)]
     full_features = np.array([features for _, features in results], dtype=object)
     protein_list = [protein for protein, _ in results]
-    sys.exit(1)
     return full_features, protein_list
 
 
