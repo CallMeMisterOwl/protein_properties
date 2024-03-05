@@ -225,9 +225,9 @@ class GlycoDataset(Dataset):
             samples = np.isin(labels, classes) #bool array
 
             # if class 2 -> filter out the negatives of the other classes !!!
-            if len(self.config.classes) < 3:
-                
-                seq = np.array(list(seqs[1]))
+            if len(classes) < 3:
+                # leads to IndexError: index 1 is out of bounds for axis 0 with size 1 in the datamodul class weights 
+                seq = np.array(list(seqs[0]))
                 if "N" in classes:
                     # remove indices from samples where the label in temp_labels is T (negative) AND the character in seq at the same position is not N
                     samples = samples & ~((labels == "T") & (seq != "N"))
