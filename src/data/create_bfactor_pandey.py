@@ -66,7 +66,7 @@ def create_dataset_ala_pandey(protein: str,
     ca_list = np.array([atom.coord for atom in struct if atom.atom_name == "CA"])
     try:
         assert len(ca_list) == len(struct_seq) == len(struct_ss), f"Length of PDB sequence ({len(seq)}) and CA atoms ({len(ca_list)}) and len SS ({len(struct_ss)}) do not match. Protein: {protein}"
-        # TODO f this man, assert is triggered for 1 protein, need to investigate
+        # TODO f this man, assert is triggered for 1 protein, need to investigate -> 115 protein affected by this -> not worth the time< 
         # I hate my life
     except AssertionError as e:
         print(e)
@@ -82,9 +82,9 @@ def create_dataset_ala_pandey(protein: str,
     disorder_residues = list("".join(map_missing_res))
     non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
     assert one_hot_seq.shape[0] == len(struct_ss) == len(ca_coord_norm), f"Length of one-hot sequence ({one_hot_seq.shape[0]}), secondary structure ({len(struct_ss)}) and CA coordinates ({len(ca_coord_norm)}) do not match"
-    final_features = np.concatenate([one_hot_seq, struct_ss, ca_coord_norm], axis=1)
+    final_features = np.stack(np.concatenate([one_hot_seq, struct_ss, ca_coord_norm], axis=1))
     if len(disorder_residues) != final_features.shape[0]:
-        final_features_masked = np.zeros(len(disorder_residues))
+        final_features_masked = np.zeros((len(disorder_residues), 27))
 
         """
         see if the per residue SASA and B-factor scores can be mapped to the primary 
