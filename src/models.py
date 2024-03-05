@@ -651,6 +651,7 @@ class GlycoModel(pl.LightningModule):
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
                  num_classes: int = 3,
+                 num_layers: int = 1,
                  **kwargs):
         super().__init__()
         self.num_classes = num_classes
@@ -658,7 +659,22 @@ class GlycoModel(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.loss_fn = None
-        self.model = nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1)
+        if num_layers == 1:
+            self.model = nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1)
+        else:
+            num_hidden = kwargs.get("num_hidden", [54])
+            dropout = kwargs.get("dropout", 0.5)
+            self.model = nn.Sequential(
+                nn.Linear(1024, num_hidden[0]),
+                nn.LeakyReLU(),
+                nn.Dropout(dropout),
+                *[nn.Sequential(
+                    nn.Linear(num_hidden[i], num_hidden[i+1] if i < len(num_hidden) - 1 else self.num_classes if self.num_classes > 2 else 1),
+                    nn.LeakyReLU(),
+                    nn.Dropout(dropout)
+                ) for i in range(num_layers - 2)],
+                nn.Linear(num_hidden[-1], self.num_classes if self.num_classes > 2 else 1)
+            )
 
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
@@ -670,6 +686,9 @@ class GlycoModel(pl.LightningModule):
 
         self.val_preds = []
         self.val_ys = []
+
+        self.test_preds = []
+        self.test_ys = []
         
 
     def forward(self, x):
@@ -710,7 +729,7 @@ class GlycoModel(pl.LightningModule):
         y_hat = torch.cat(self.val_preds, dim=0)
         y = torch.cat(self.val_ys, dim=0)
         for t in self._accuracy(y_hat, y):
-            self.log(f"val_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
+            self.log(f"val_{t[0]}", t[1], on_epoch=True)
         self.val_preds.clear()
         self.val_ys.clear()
     
@@ -725,8 +744,6 @@ class GlycoModel(pl.LightningModule):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
-        for t in self._accuracy(y_hat, y):
-            self.log(f"test_{t[0]}", t[1], on_epoch=True, on_step=False, batch_size=y.shape[0])
 
         if self.num_classes == 2:
             if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
@@ -735,6 +752,14 @@ class GlycoModel(pl.LightningModule):
             return y_hat.cpu().numpy().squeeze(0), y.cpu().numpy().squeeze(0)
         
         return y_hat.cpu().numpy(), y.cpu().numpy()
+
+    def on_test_epoch_end(self):
+        y_hat = torch.cat(self.test_preds, dim=0)
+        y = torch.cat(self.test_ys, dim=0)
+        for t in self._accuracy(y_hat, y):
+            self.log(f"test_{t[0]}", t[1], on_epoch=True)
+        self.test_preds.clear()
+        self.test_ys.clear()
         
     
     def _configure_optimizer(self, optim_config = None):
