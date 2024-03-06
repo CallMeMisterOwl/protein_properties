@@ -745,6 +745,9 @@ class GlycoModel(pl.LightningModule):
             y = y.unsqueeze(0)
         self.log("test_loss", loss, on_step=False, on_epoch=True)
 
+        self.test_preds.append(y_hat)
+        self.test_ys.append(y)
+
         if self.num_classes == 2:
             if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
                 y_hat = y_hat.unsqueeze(0)
