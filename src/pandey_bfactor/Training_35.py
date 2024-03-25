@@ -44,7 +44,7 @@ np.save('x_valid_35', x_valid)
 
 # hyper-parameters
 batch_size = 128
-device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 # dataset preparation
