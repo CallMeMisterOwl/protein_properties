@@ -1,4 +1,4 @@
-# protein_properties
+# Prediction of Protein Properties 
 
 
 
