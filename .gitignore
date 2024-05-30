@@ -20,3 +20,7 @@ data/sasa/class_weights_*.pt
 lightning_logs/
 chkpnts/
 log/
+data/glyco/np/*
+runs/*
+*.npy
+__pycache__
