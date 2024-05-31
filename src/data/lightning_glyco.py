@@ -186,7 +186,7 @@ class GlycoDataModule(pl.LightningDataModule):
 # one for the baseline -> simply use the embedding of the glyco site 
 # one for the baseline + dialated mean embedding -> use the embedding of the glyco site and the dialated mean embedding e.g. 101010N010101
 class GlycoDataset(Dataset):
-    def __init__(self, split: str, config: GlycoDataConfig) -> None:
+    def __init__(self, split: str, config: GlycoDataConfig, add_neg_sites: bool = False, use_neg_diff: bool = False) -> None:
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
@@ -195,12 +195,17 @@ class GlycoDataset(Dataset):
         self.num_classes = len(config.classes)
         self.to_classes = np.vectorize(config.classes.get)
         self.config = config
+        self.add_neg_sites = add_neg_sites
+        if self.add_neg_sites and self.num_classes < 3 and self.split == "train":
+            self.split = "train_more_neg"
+        self.use_neg_diff = use_neg_diff
 
         self.X = None
         self.y = None
         self.pids = None
         self.load_data()
     
+
     def load_data(self):
         if self.split == "blind_test":
             raise NotImplementedError("Blind test set not implemented yet!")
@@ -225,7 +230,7 @@ class GlycoDataset(Dataset):
             samples = np.isin(labels, classes) #bool array
 
             # if class 2 -> filter out the negatives of the other classes !!!
-            if len(classes) < 3:
+            if len(classes) < 3 and not self.use_neg_diff:
                 # leads to IndexError: index 1 is out of bounds for axis 0 with size 1 in the datamodul class weights 
                 seq = np.array(list(seqs[0]))
                 if "N" in classes:
