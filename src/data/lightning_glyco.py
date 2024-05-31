@@ -18,6 +18,8 @@ class GlycoDataConfig():
     np_path: str = '../../data/np'
     num_workers: int = 4
     batch_size: int = 64
+    add_neg_sites: bool = False, 
+    use_neg_diff: bool = False
     
 
 import torch
@@ -186,7 +188,7 @@ class GlycoDataModule(pl.LightningDataModule):
 # one for the baseline -> simply use the embedding of the glyco site 
 # one for the baseline + dialated mean embedding -> use the embedding of the glyco site and the dialated mean embedding e.g. 101010N010101
 class GlycoDataset(Dataset):
-    def __init__(self, split: str, config: GlycoDataConfig, add_neg_sites: bool = False, use_neg_diff: bool = False) -> None:
+    def __init__(self, split: str, config: GlycoDataConfig) -> None:
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
@@ -195,10 +197,10 @@ class GlycoDataset(Dataset):
         self.num_classes = len(config.classes)
         self.to_classes = np.vectorize(config.classes.get)
         self.config = config
-        self.add_neg_sites = add_neg_sites
+        self.add_neg_sites = config.add_neg_sites
         if self.add_neg_sites and self.num_classes < 3 and self.split == "train":
             self.split = "train_more_neg"
-        self.use_neg_diff = use_neg_diff
+        self.use_neg_diff = config.use_neg_diff
 
         self.X = None
         self.y = None
