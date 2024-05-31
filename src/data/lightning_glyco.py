@@ -18,7 +18,7 @@ class GlycoDataConfig():
     np_path: str = '../../data/np'
     num_workers: int = 4
     batch_size: int = 64
-    add_neg_sites: bool = False, 
+    add_neg_sites: bool = False
     use_neg_diff: bool = False
     
 
