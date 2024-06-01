@@ -198,11 +198,9 @@ class GlycoDataset(Dataset):
         self.to_classes = np.vectorize(config.classes.get)
         self.config = config
         self.add_neg_sites = config.add_neg_sites
-        self.use_neg_diff = config.use_neg_diff
         if self.add_neg_sites and self.num_classes < 3 and self.split == "train":
             self.split = "train_more_neg"
-        elif self.use_neg_diff and self.num_classes < 3 and self.split == "train":
-            self.split = "train_use_neg_diff" 
+        self.use_neg_diff = config.use_neg_diff
 
         self.X = None
         self.y = None
