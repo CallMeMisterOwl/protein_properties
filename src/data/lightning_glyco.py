@@ -200,7 +200,7 @@ class GlycoDataset(Dataset):
         self.add_neg_sites = config.add_neg_sites
         if self.add_neg_sites and self.num_classes < 3 and self.split == "train":
             self.split = "train_more_neg"
-        self.use_neg_diff = config.use_neg_diff
+        self.use_neg_diff = config.use_neg_diff if self.split == "train" else False
 
         self.X = None
         self.y = None
