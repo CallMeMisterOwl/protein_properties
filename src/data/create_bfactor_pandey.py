@@ -157,7 +157,7 @@ def create_dataset_ala_pandey(protein: str,
         final_features_masked = np.concatenate([final_features_masked, start_end_pp[:, np.newaxis]], axis=1)
         prot_length = final_features_masked.shape[0]
         final_features_masked = np.pad(final_features_masked, ((0, 500 - final_features_masked.shape[0]), (0, 0)), mode='constant', constant_values=0)
-        final_features_masked = np.pad(final_features_masked, ((0, 0), (0, 500)), mode='constant', constant_values=prot_length)
+        final_features_masked = np.pad(final_features_masked, ((0, 0), (0, 1)), mode='constant', constant_values=prot_length)
         return protein, final_features_masked
 
     start_end_pp = np.zeros(final_features.shape[0])
@@ -165,7 +165,7 @@ def create_dataset_ala_pandey(protein: str,
     final_features = np.concatenate([final_features, start_end_pp[:, np.newaxis]], axis=1)    
     prot_length = final_features.shape[0]
     final_features = np.pad(final_features, ((0, 500 - final_features.shape[0]), (0, 0)), mode='constant', constant_values=0)
-    final_features = np.pad(final_features, ((0, 0), (0, 500)), mode='constant', constant_values=prot_length)
+    final_features = np.pad(final_features, ((0, 0), (0, 1)), mode='constant', constant_values=prot_length)
     return protein, final_features
 
 
