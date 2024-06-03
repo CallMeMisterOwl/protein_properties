@@ -150,15 +150,23 @@ def create_dataset_ala_pandey(protein: str,
             else:
                 print(f"Investiage protein {protein}")
                 return protein, None, None
+                
         start_end_pp = np.zeros(final_features_masked.shape[0])
         start_end_pp[0], start_end_pp[-1] = 1, 1
+        prot_length = np.array([final_features_masked.shape[0]] * final_features_masked.shape[0])
         final_features_masked = np.concatenate([final_features_masked, start_end_pp[:, np.newaxis]], axis=1)
-        return protein, final_features_masked.tolist()
+        prot_length = final_features_masked.shape[0]
+        final_features_masked = np.pad(final_features_masked, ((0, 500 - final_features_masked.shape[0]), (0, 0)), mode='constant', constant_values=0)
+        final_features_masked = np.pad(final_features_masked, ((0, 0), (0, 500)), mode='constant', constant_values=prot_length)
+        return protein, final_features_masked
 
     start_end_pp = np.zeros(final_features.shape[0])
     start_end_pp[0], start_end_pp[-1] = 1, 1
     final_features = np.concatenate([final_features, start_end_pp[:, np.newaxis]], axis=1)    
-    return protein, final_features.tolist()
+    prot_length = final_features.shape[0]
+    final_features = np.pad(final_features, ((0, 500 - final_features.shape[0]), (0, 0)), mode='constant', constant_values=0)
+    final_features = np.pad(final_features, ((0, 0), (0, 500)), mode='constant', constant_values=prot_length)
+    return protein, final_features
 
 
 
@@ -225,12 +233,17 @@ def main(args: Optional[list] = None):
     mapping_file = args.mapping_file
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
+
     global aa_dict
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
-    fasta_paths = [os.path.join(fasta_path, f"{fasta}_norm.o") for fasta in ["train", "val", "test", "blind_test"]]
-    all_ids = [list(Fasta(path=fasta_path).keys()) for fasta_path in fasta_paths]
-    all_ids = [x for xs in all_ids for x in xs]
+
+    fasta_path = os.path.join(fasta_path, "test_norm.o") 
+    test_fasta = Fasta(path=fasta_path)
+    test_fasta = {k: v for k, v in test_fasta.items() if len(v[0]) <= 500}
+
+    all_ids = list(test_fasta.keys()) 
+    # all_ids = [x for xs in all_ids for x in xs]
     bfactor_full_features, protein_list = calculate_scores(all_ids, pdb_path, args.n_processes, mapping_fasta)
     np.save(os.path.join(output_path, "bfactor_full_features.npy"), bfactor_full_features)
     with open(os.path.join(output_path, "protein_list.txt"), "w") as f:
