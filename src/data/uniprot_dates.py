@@ -2,6 +2,7 @@ from urllib.request import urlopen
 import gzip
 from datetime import datetime
 from pathlib import Path
+import argparse
 
 
 def main():
@@ -10,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
-    
+    args = parser.parse_args()
     output_path = Path(args.output_path)
     url = "https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.dat.gz"
     handle = urlopen(url)
