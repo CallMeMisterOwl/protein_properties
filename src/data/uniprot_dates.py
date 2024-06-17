@@ -3,6 +3,9 @@ import gzip
 from datetime import datetime
 from pathlib import Path
 import argparse
+from Bio import SwissProt
+import numpy as np
+
 
 
 def main():
