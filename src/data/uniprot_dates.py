@@ -23,7 +23,7 @@ def main():
     p_ids = []
     seqs = []
     for ref in SwissProt.parse(handle):
-        dates.append(datetime.strptime(ref.created[0], "%Y-%b-%d"))
+        dates.append(datetime.strptime(ref.created[0], "%d-%b-%Y"))
         p_ids.append(ref.entry_name)
         seqs.append(ref.sequence)
     
