@@ -12,6 +12,7 @@ from typing import Optional
  
 from Bio.Align import PairwiseAligner
 from Bio.Align import substitution_matrices
+import multiprocessing
 
 
 
@@ -124,21 +125,25 @@ class LabelTransferBaseline(nn.Module):
     
     def calculate_sequence_similarity(self, query_id: str, lookup_ids: list[str]) -> list[float]:
         """
-        Calculate sequence similarity between query protein and lookup proteins. Sequence similarity and identity are used interchangeably, even though they are not the same.
+        Calculate sequence similarity between query protein and lookup proteins. 
+        Sequence similarity and identity are used interchangeably, even though they are not the same.
         Uniqueprot uses sequence identity -> we should be fine 
         """
         # data types
         query_seq = self.rsa_fasta[query_id][0]
         lookup_seqs = [self.seqs[id][0] for id in lookup_ids]
         scores = []
-        for idx, seq in enumerate(lookup_seqs):
+        
+        def calculate_similarity(seq):
             alignments = self.aligner.align(query_seq, seq)
             best_ss_score = 0
-            for a in alignments: # find best alignment -> highest sequence similarity score
-                seq_similarity = a.counts[1] / len(a.indices[0]) * 100
-                best_ss_score = seq_similarity if seq_similarity > best_ss_score else best_ss_score
-                    
-            scores.append(best_ss_score)
+            a = alignments[0]
+            seq_similarity = a.counts().identities / len(a.indices[0]) * 100
+            return seq_similarity
+        
+        with multiprocessing.Pool() as pool:
+            scores = pool.map(calculate_similarity, lookup_seqs)
+        
         assert len(scores) == len(lookup_ids) # check if all lookup proteins have a score
         return scores
       
@@ -146,6 +151,7 @@ class LabelTransferBaseline(nn.Module):
         with open("BLOSUM62") as handle:
             blosum_matrix = substitution_matrices.read(handle)
         aligner = PairwiseAligner(scoring="blastp", mode = 'global')
+        aligner.substitution_matrix = blosum_matrix
         
 
 
