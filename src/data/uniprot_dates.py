@@ -40,9 +40,7 @@ def get_data(url, output_path) -> None:
     print(f'Wrote {len(dates)} sequences to {output_path}')
     np.save(output_path / 'dates.npy', dates)
 
-# TODO fix alpahbet issue -> ValueError: sequence contains letters not in the alphabet
 
-        
 # data types
 def calculate_sequence_similarity(query_seq: str, lookup_seqs: list[str]) -> list[float]:
     """
@@ -57,13 +55,12 @@ def calculate_sequence_similarity(query_seq: str, lookup_seqs: list[str]) -> lis
         scores = [result[0] for result in results]
     return scores
 
+
 def calculate_similarity(query_seq: str, seq: str) -> float:
     alignments = aligner.align(query_seq, seq)
     a = alignments[0]
     seq_similarity = a.counts().identities / len(a.indices[0]) * 100
     return seq_similarity, seq
-
-
 
 
 def main():
