@@ -219,8 +219,7 @@ def main(args: Optional[list] = None):
     map_missing_res = Fasta(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"))
 
     global codes
-    codes = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
-            'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '-']
+    codes = ['A', 'V', 'F', 'I', 'L','D','E','K','S','T','Y','C','N','Q', 'P','M', 'R', 'H', 'W', 'G', '-']
     # create matrix with diagonal 1
     global one_hot
     one_hot = np.identity(len(codes))
