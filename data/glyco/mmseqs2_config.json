@@ -1,8 +1,8 @@
 {
-    "eValue": 0.001,
+    "eValue": 10,
     "sensitivity": 7.5,
-    "seqCoverage": 0.5,
-    "minAlnLen": 0,
+    "seqCoverage": 0,
+    "minAlnLen": 11,
     "minSeqId": 0.3,
     "verbose": true,
     "numIterations": 2,
