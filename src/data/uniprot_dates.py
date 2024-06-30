@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 from Bio.Align import PairwiseAligner
 from Bio.Align import substitution_matrices
+import multiprocessing
 
 
 def get_data(url, output_path) -> None:
@@ -40,24 +41,29 @@ def get_data(url, output_path) -> None:
     np.save(output_path / 'dates.npy', dates)
 
 # TODO fix alpahbet issue -> ValueError: sequence contains letters not in the alphabet
+
+        
+# data types
 def calculate_sequence_similarity(query_seq: str, lookup_seqs: list[str]) -> list[float]:
-        """
-        Calculate sequence similarity between query protein and lookup proteins. 
-        Sequence similarity and identity are used interchangeably, even though they are not the same.
-        Uniqueprot uses sequence identity -> we should be fine 
-        """
-        # data types
-        scores = []
-        for idx, seq in enumerate(lookup_seqs):
-            alignments = aligner.align(query_seq, seq)
-            best_ss_score = 0
-            for a in alignments: # find best alignment -> highest sequence similarity score
-                seq_similarity = a.counts[1] / len(a.indices[0]) * 100
-                best_ss_score = seq_similarity if seq_similarity > best_ss_score else best_ss_score
-                    
-            scores.append(best_ss_score)
-        assert len(scores) == len(lookup_ids) # check if all lookup proteins have a score
-        return scores
+    """
+    Calculate sequence similarity between query protein and lookup proteins. 
+    Sequence similarity and identity are used interchangeably, even though they are not the same.
+    Uniqueprot uses sequence identity -> we should be fine 
+    """
+    # data types
+    scores = []
+    with multiprocessing.Pool() as pool:
+        results = pool.starmap(calculate_similarity, [(query_seq, seq) for seq in lookup_seqs])
+        scores = [result[0] for result in results]
+    return scores
+
+def calculate_similarity(query_seq: str, seq: str) -> float:
+    alignments = aligner.align(query_seq, seq)
+    a = alignments[0]
+    seq_similarity = a.counts().identities / len(a.indices[0]) * 100
+    return seq_similarity, seq
+
+
 
 
 def main():
@@ -87,9 +93,9 @@ def main():
     with open(output_path / 'id_seqs.fasta', 'r') as f:
         for line in f:
             if line.startswith('>'):
-                ids.append(line[1:-1])
+                ids.append(line[1:-1].strip())
             else:
-                seqs.append(line)
+                seqs.append(line.strip())
 
     cutoff_date = np.datetime64(cutoff_year)
     mask = dates < cutoff_date
@@ -99,7 +105,7 @@ def main():
     with open(output_path / 'scores.txt', 'w') as f:
         f.write("ID\tMean\tMedian\tMax\tMin\n")
     # calculate sequence similarity
-    for i, query_seq in enumerate(query_seqs):
+    for i, query_seq in tqdm(enumerate(query_seqs)):
         scores = calculate_sequence_similarity(query_seq, lookup_seqs)
         mean_score = np.mean(scores)
         median_score = np.median(scores)
