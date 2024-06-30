@@ -109,7 +109,7 @@ def main():
         max_score = np.max(scores)
         min_score = np.min(scores)
         # save scores to file
-        with open(output_path / 'scores.txt', 'w') as f:
+        with open(output_path / 'scores.txt', 'a') as f:
             f.write(f'{query_ids[i]}\t{mean_score}\t{median_score}\t{max_score}\t{min_score}\n')
         lookup_seqs.append(query_seq)
 
