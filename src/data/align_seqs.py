@@ -8,6 +8,7 @@ Afterwards for each fasta file: iterate over all headers and get the sequence fr
 Now align the seq_chain_a_single to the sequence from the fasta file using brute force alignment described here https://johnlekberg.com/blog/2020-10-25-seq-align.html
 Finally return a fasta file that contains only sequences that have a sequence identity of below 100%
 """
+import numpy as np
 
 import argparse
 import sys
