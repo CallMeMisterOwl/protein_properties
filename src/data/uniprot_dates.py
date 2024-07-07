@@ -1,14 +1,14 @@
-from urllib.request import urlopen
+import argparse
 import gzip
+import multiprocessing
 from datetime import datetime
 from pathlib import Path
-import argparse
-from Bio import SwissProt
+from urllib.request import urlopen
+
 import numpy as np
+from Bio import SwissProt
+from Bio.Align import PairwiseAligner, substitution_matrices
 from tqdm import tqdm
-from Bio.Align import PairwiseAligner
-from Bio.Align import substitution_matrices
-import multiprocessing
 
 
 def get_data(url, output_path) -> None:

@@ -1,20 +1,15 @@
+import multiprocessing
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Optional
+
 import h5py
 import lightning.pytorch as pl
-import torch.nn.functional as F
 import torch
-from torch import nn
-from torch import Tensor
-from torchmetrics.functional.regression import pearson_corrcoef, mean_absolute_error
-from torchmetrics.functional.classification import f1_score, matthews_corrcoef, accuracy
-from typing import Optional
- 
-from Bio.Align import PairwiseAligner
-from Bio.Align import substitution_matrices
-import multiprocessing
-
-
+import torch.nn.functional as F
+from Bio.Align import PairwiseAligner, substitution_matrices
+from torch import Tensor, nn
+from torchmetrics.functional.classification import accuracy, f1_score, matthews_corrcoef
+from torchmetrics.functional.regression import mean_absolute_error, pearson_corrcoef
 
 #cosine vs euclidean https://medium.com/@sasi24/cosine-similarity-vs-euclidean-distance-e5d9a9375fc8
 
