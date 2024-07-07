@@ -9,7 +9,7 @@ Now align the seq_chain_a_single to the sequence from the fasta file using brute
 Finally return a fasta file that contains only sequences that have a sequence identity of below 100%
 """
 import numpy as np
-
+# test
 import argparse
 import sys
 from os import path
