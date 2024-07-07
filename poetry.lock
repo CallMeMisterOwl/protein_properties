@@ -3020,6 +3020,18 @@ six = "*"
 test = ["pytest", "pytest-cov", "scipy"]
 
 [[package]]
+name = "pdbecif"
+version = "1.5"
+description = "A lightweight pure python package for reading, writing and manipulating mmCIF files distributed by the wwPDB."
+optional = false
+python-versions = "*"
+files = [
+    {file = "PDBeCif-1.5-py2-none-any.whl", hash = "sha256:0e2965c10b782b141adb82d80bcfa97b7508d4c91a7fc775faf4ca0676e3daff"},
+    {file = "PDBeCif-1.5-py3-none-any.whl", hash = "sha256:1fe5db0a0c6736f0e7eba5476c94687fdd629b7fe2f4ab71af0d41749da43752"},
+    {file = "PDBeCif-1.5.tar.gz", hash = "sha256:b3925fa22095a8780ac3f9c93ca8c94d89434d93fd959dfa240fcefde0ecfeb1"},
+]
+
+[[package]]
 name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -3719,6 +3731,27 @@ packaging = "*"
 
 [package.extras]
 test = ["pytest (>=6,!=7.0.0,!=7.0.1)", "pytest-cov (>=3.0.0)", "pytest-qt"]
+
+[[package]]
+name = "rcsbsearchapi"
+version = "1.6.0"
+description = "Python package interface for the RCSB PDB search API service"
+optional = false
+python-versions = "*"
+files = [
+    {file = "rcsbsearchapi-1.6.0.tar.gz", hash = "sha256:3ba0cb3033f156ba6b94660e7ccae157283dea1d82fd22e1379d5c4e5492fc22"},
+]
+
+[package.dependencies]
+requests = ">=2.0.0"
+tqdm = "*"
+
+[package.extras]
+dev = ["check-manifest"]
+docs = ["myst-parser", "sphinx", "sphinx-rtd-theme"]
+progressbar = ["tqdm"]
+test = ["coverage"]
+tests = ["black (>=21.5b1)", "flake8", "pylint", "tox"]
 
 [[package]]
 name = "readchar"
@@ -4884,4 +4917,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "8cf5d288e818dc66c51dee3570a2a369890f48239aca19e5d238ad5c2da724c2"
+content-hash = "34ebb4bbf08b406016d7b3536993979ea9944aaace8fa1761c1268612b6c35d9"
