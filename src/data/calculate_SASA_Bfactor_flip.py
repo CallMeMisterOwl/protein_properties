@@ -21,6 +21,7 @@ import os
 # TODO find a way to automatically substitute non-generic amino acid with generic ones 
 aa_dict = None
 
+list_of_bad_prots = ["1VOQ-a"]
 def calculate_scores_for_protein(protein: str, 
                                  pdb_path: str,
                                  map_missing_res: list[str], 
@@ -189,7 +190,8 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
         results = [pool.apply_async(calculate_scores_for_protein, 
                                     args=(protein, pdb_path, 
                                           mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], 
-                                          mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) for protein in proteins]
+                                          mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) 
+                                          for protein in proteins if protein not in list_of_bad_prots]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: [sasa_scores] for protein, sasa_scores, _ in results}
     bfactor_scores = {protein: [bfactor_scores] for protein, _, bfactor_scores in results}
