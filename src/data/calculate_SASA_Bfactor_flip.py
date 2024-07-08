@@ -59,7 +59,11 @@ def calculate_scores_for_protein(protein: str,
         print(f'Could not find PDBx file for {protein}\nFetching from RCSB...')
         file_path = rcsb.fetch(cif_header, "cif")
         pdbx = PDBxFile.read(file_path)
-    struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
+    try:
+        struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
+    except ValueError:
+        print(f'Skipping protein {protein}...\n')
+        return protein, None, None
     # Thank you biotite for this wonderful class, NOT!
     seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
 
