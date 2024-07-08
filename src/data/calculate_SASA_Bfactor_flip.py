@@ -73,7 +73,11 @@ def calculate_scores_for_protein(protein: str,
         struct = struct[chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
     
     struct = struct[biostruc.filter_amino_acids(struct)]
-    atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
+    try:
+        atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
+    except ValueError:
+        print(f'Skipping protein {protein}...\n')
+        return protein, None, None
 
     res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
     res_bfactor = biostruc.apply_residue_wise(struct, struct.get_annotation("b_factor"), np.nanmean)
