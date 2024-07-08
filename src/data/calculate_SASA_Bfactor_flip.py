@@ -208,6 +208,7 @@ def main(args: Optional[list] = None):
     parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
     parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use', type=int)
+    parser.add_argument('-u', '--upper', action='store_true', help='Use uppercase protein names', default=True)
 
     # Parse arguments
     if args is None:
@@ -219,13 +220,14 @@ def main(args: Optional[list] = None):
     mapping_file = args.mapping_file
     output_path = args.output_path
     mapping_fasta = Fasta(mapping_file)
+    upper = args.upper
     global aa_dict
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
         aa_dict = json.load(f)
         
     for fasta_path in fasta_files:
         fasta = Fasta(fasta_path)
-        sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta)
+        sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta, upper)
         deepcopy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta', overwrite=True)
         fasta.append(sasa_scores).write_fasta(f'{output_path}/sasa/{Path(fasta_path).stem}_sasa.fasta', overwrite=True)
 
