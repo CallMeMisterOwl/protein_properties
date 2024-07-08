@@ -21,7 +21,7 @@ import os
 # TODO find a way to automatically substitute non-generic amino acid with generic ones 
 aa_dict = None
 
-list_of_bad_prots = ["1VOQ-a"]
+list_of_bad_prots = ["1VOQ-a", "1VOS"]
 def calculate_scores_for_protein(protein: str, 
                                  pdb_path: str,
                                  map_missing_res: list[str], 
@@ -167,7 +167,7 @@ def calculate_scores_for_protein(protein: str,
     return protein, res_sasa.tolist(), res_bfactor.tolist()
 
 
-def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta: Fasta) -> tuple[dict, dict]:
+def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta: Fasta, upper: bool = True) -> tuple[dict, dict]:
     """
     Calculates the SASA and B-factor scores for every protein in the fasta file. 
     The SASA and B-factor scores are calculated for each residue in the protein.
@@ -189,9 +189,9 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
     with mp.Pool(int(nprocesses)) as pool:
         results = [pool.apply_async(calculate_scores_for_protein, 
                                     args=(protein, pdb_path, 
-                                          mapping_fasta[":".join((protein.upper() + "-disorder").split("-"))], 
-                                          mapping_fasta[":".join((protein.upper() + "-sequence").split("-"))])) 
-                                          for protein in proteins if protein not in list_of_bad_prots]
+                                          mapping_fasta[":".join((protein.upper() if upper else protein + "-disorder").split("-"))], 
+                                          mapping_fasta[":".join((protein.upper() if upper else protein + "-sequence").split("-"))])) 
+                                          for protein in proteins]
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {protein: [sasa_scores] for protein, sasa_scores, _ in results}
     bfactor_scores = {protein: [bfactor_scores] for protein, _, bfactor_scores in results}
