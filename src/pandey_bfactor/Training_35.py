@@ -28,9 +28,31 @@ x = np.reshape(x,(-1,1))
 y = x 
 X, x_test, Y, y_test = train_test_split( x, y, test_size=0.04, random_state=10)
 x_train, x_valid, y_train, y_valid = train_test_split( X, Y, test_size=0.04, random_state=100)
+
+
+with open("data/pandey_bfactor/x.fasta", "r") as file:
+    ids = [line[:1].strip() for line in file if line.startswith(">")]
+
+#remove ids from train val and test
+train = set(x_train.squeeze().tolist())
+val = set(x_valid.squeeze().tolist())
+test = set(x_test.squeeze().tolist())
+ids = set(ids)
+
+# retain only the ids that are in ids 
+train = train.intersection(ids)
+val = val.intersection(ids)
+test = test.intersection(ids)
+
+# convert back to numpy array
+x_train = np.array(list(train)).reshape(-1,1)
+x_valid = np.array(list(val)).reshape(-1,1)
+x_test = np.array(list(test)).reshape(-1,1)
+
 n_samples_train = np.shape(x_train)[0] 
 n_samples_test = np.shape(x_test)[0]
 n_samples_valid = np.shape(x_valid)[0]
+
 print('Number of train samples:', n_samples_train)
 print('Number of valid samples:', n_samples_valid)
 print('Number of test samples:', n_samples_test)
