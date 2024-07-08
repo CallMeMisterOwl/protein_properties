@@ -71,6 +71,11 @@ def calculate_scores_for_protein(protein: str,
     chain_id = protein.split('-')[1]
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
+    try:
+        assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
+    except AssertionError as e:
+        print(e)
+        return protein, None, None
     if biostruc.get_chain_count(struct) == 1 or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]:
         struct = struct[chain_starts[chain_ids.index(chain_id)]:]
     else:
