@@ -208,7 +208,7 @@ def main(args: Optional[list] = None):
     parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
     parser.add_argument('-o', '--output_path', required=True, help='Output path')
     parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use', type=int)
-    parser.add_argument('-u', '--upper', action='store_true', help='Use uppercase protein names', default=True)
+    parser.add_argument('-u', '--upper', action='store_true', help='Use uppercase protein names')
 
     # Parse arguments
     if args is None:
