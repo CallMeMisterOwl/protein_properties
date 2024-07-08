@@ -99,8 +99,14 @@ def main():
     lookup_seqs = [seq for i, seq in enumerate(seqs) if mask[i]]
     query_seqs = [seq for i, seq in enumerate(seqs) if not mask[i]]
     query_ids = [id for i, id in enumerate(ids) if not mask[i]]
-    with open(output_path / 'scores.txt', 'w') as f:
-        f.write("ID\tMean\tMedian\tMax\tMin\n")
+    if not (output_path / 'scores.txt').exists():
+        with open(output_path / 'scores.txt', 'w') as f:
+            f.write("ID\tMean\tMedian\tMax\tMin\n")
+    else:
+        existing_ids = []
+        with open(output_path / 'scores.txt', 'r') as f:
+            existing_ids = [line.split('\t')[0] for line in f.readlines()]
+        query_seqs = [seq for i, seq in enumerate(query_seqs) if query_ids[i] not in existing_ids]
     # calculate sequence similarity
     for i, query_seq in tqdm(enumerate(query_seqs)):
         scores = calculate_sequence_similarity(query_seq, lookup_seqs)
