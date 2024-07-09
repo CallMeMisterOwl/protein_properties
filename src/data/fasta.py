@@ -62,6 +62,9 @@ class Fasta:
         path.parents[0].mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             for header, sequence in self.sequences.items():
+                if not sequence:
+                    f.write(f'>{header}\n\n')
+                    continue
                 f.write(f'>{header}\n')
                 f.write('\n'.join([i if isinstance(i, str) else '|'.join([str(x) for x in i]) for i in sequence]) + '\n')
 
