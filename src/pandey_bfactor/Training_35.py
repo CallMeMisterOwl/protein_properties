@@ -31,7 +31,7 @@ x_train, x_valid, y_train, y_valid = train_test_split( X, Y, test_size=0.04, ran
 
 
 with open("data/pandey_bfactor/rr_train_a_our_test.fasta", "r") as file:
-    ids = [line[:1].strip() for line in file if line.startswith(">")]
+    ids = [line[1:].strip() for line in file if line.startswith(">")]
 
 #remove ids from train val and test
 train = set(x_train.squeeze().tolist())
