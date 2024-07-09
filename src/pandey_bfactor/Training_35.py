@@ -30,7 +30,7 @@ X, x_test, Y, y_test = train_test_split( x, y, test_size=0.04, random_state=10)
 x_train, x_valid, y_train, y_valid = train_test_split( X, Y, test_size=0.04, random_state=100)
 
 
-with open("data/pandey_bfactor/x.fasta", "r") as file:
+with open("data/pandey_bfactor/rr_train_a_our_test.fasta", "r") as file:
     ids = [line[:1].strip() for line in file if line.startswith(">")]
 
 #remove ids from train val and test
