@@ -206,8 +206,8 @@ def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_
                                           mapping_fasta[":".join((protein.upper() if upper else protein + "-sequence").split("-"))])) 
                                           for protein in proteins]
         results = [r.get() for r in tqdm(results)]
-    sasa_scores = {protein: [sasa_scores] for protein, sasa_scores, _ in results}
-    bfactor_scores = {protein: [bfactor_scores] for protein, _, bfactor_scores in results}
+    sasa_scores = {protein: [sasa_scores] for protein, sasa_scores, _ in results if sasa_scores is not None}
+    bfactor_scores = {protein: [bfactor_scores] for protein, _, bfactor_scores in results if bfactor_scores is not None}
     return sasa_scores, bfactor_scores
 
 
