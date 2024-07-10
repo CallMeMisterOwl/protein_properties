@@ -288,7 +288,7 @@ for epoch in range(num_epochs):
   
   if (epoch%1 == 0):
     # print(f'Learning rate in epoch {epoch+1} was', cur_lr)
-    torch.save(model, f'results/pandey_bfactor/35_all/epoch_{epoch+1}.pth') ##FIXME
+    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all/epoch_{epoch+1}.pth') ##FIXME
     writer.add_scalar("Loss per epoch/train", avg_loss, epoch)
 
     with torch.no_grad():
