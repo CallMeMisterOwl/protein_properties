@@ -40,11 +40,11 @@ test = set(x_test.squeeze().tolist())
 ids = set(ids)
 
 # retain only the ids that are in ids 
-train = train.intersection(ids)
+"""train = train.intersection(ids)
 
 
 # convert back to numpy array
-x_train = np.array(list(train)).reshape(-1,1)
+x_train = np.array(list(train)).reshape(-1,1)"""
 
 
 n_samples_train = np.shape(x_train)[0] 
@@ -56,9 +56,9 @@ print('Number of valid samples:', n_samples_valid)
 print('Number of test samples:', n_samples_test)
 
 # saving the test sample set for future use
-np.save('x_test_35', x_test)
-np.save('x_train_35', x_train)
-np.save('x_valid_35', x_valid)
+np.save('x_test_35_no_rr', x_test)
+np.save('x_train_35_no_rr', x_train)
+np.save('x_valid_35_no_rr', x_valid)
 
 
 
@@ -286,7 +286,7 @@ for epoch in range(num_epochs):
   
   if (epoch%1 == 0):
     # print(f'Learning rate in epoch {epoch+1} was', cur_lr)
-    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all/epoch_{epoch+1}.pth') ##! FIXME -> yeah no shit sherlock 
+    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all_no_rr/epoch_{epoch+1}_no_rr.pth') ##! FIXME -> yeah no shit sherlock 
     writer.add_scalar("Loss per epoch/train", avg_loss, epoch)
 
     with torch.no_grad():
