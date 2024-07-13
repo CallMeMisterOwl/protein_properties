@@ -41,13 +41,11 @@ ids = set(ids)
 
 # retain only the ids that are in ids 
 train = train.intersection(ids)
-val = val.intersection(ids)
-test = test.intersection(ids)
+
 
 # convert back to numpy array
 x_train = np.array(list(train)).reshape(-1,1)
-x_valid = np.array(list(val)).reshape(-1,1)
-x_test = np.array(list(test)).reshape(-1,1)
+
 
 n_samples_train = np.shape(x_train)[0] 
 n_samples_test = np.shape(x_test)[0]
@@ -288,7 +286,7 @@ for epoch in range(num_epochs):
   
   if (epoch%1 == 0):
     # print(f'Learning rate in epoch {epoch+1} was', cur_lr)
-    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all/epoch_{epoch+1}.pth') ##FIXME
+    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all/epoch_{epoch+1}.pth') ##! FIXME -> yeah no shit sherlock 
     writer.add_scalar("Loss per epoch/train", avg_loss, epoch)
 
     with torch.no_grad():
