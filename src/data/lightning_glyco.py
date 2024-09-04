@@ -1,12 +1,14 @@
 import os
+from imblearn.under_sampling import RandomUnderSampler
+import pandas as pd
 from pathlib import Path
 import lightning.pytorch as pl
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset, ConcatDataset
+from torch.utils.data import DataLoader, Dataset, ConcatDataset, random_split, Subset
+from sklearn.model_selection import train_test_split, GroupShuffleSplit
 import h5py
 from tqdm import tqdm
-from src.data.fasta import Fasta
 from dataclasses import dataclass
 
 
@@ -73,7 +75,7 @@ class GroupedBatchSampler(BatchSampler):
     def __len__(self):
         return len(self.batches)
 
-
+# !TODO: Subset doesn't support the custom class variables like pids or classes etc.
 class GlycoDataModule(pl.LightningDataModule):
     def __init__(self, config: GlycoDataConfig) -> None:
         super().__init__()
@@ -101,54 +103,34 @@ class GlycoDataModule(pl.LightningDataModule):
         if not self.data_dir.exists():
             raise FileNotFoundError("The data directory that was provided does not exist! Please download the data first!")
         
-        if not (self.data_dir / "train.o").exists() or not (self.data_dir / "val.o").exists() or not (self.data_dir / "O_test.o").exists():
-            raise FileNotFoundError("The data directory that was provided is missing the .o files! Please download the data first!")
+        """if not (self.data_dir / "train.csv").exists() or not (self.data_dir / "val.csv").exists() or not (self.data_dir / "O_test.csv").exists():
+            raise FileNotFoundError("The data directory that was provided is missing the .o files! Please download the data first!")"""
         
 
     def setup(self, stage=None):
         self.prepare_data()
         
-        self.train_dataset = GlycoDataset("train", self.config)
-        self.val_dataset = GlycoDataset("val", self.config)
-        self.O_test_dataset = GlycoDataset("O_test", self.config)
+        og_train_dataset = GlycoDataset("train", self.config, 42, False)
+        # split the train dataset into train and val
+        labels = []
+        for l, a in zip(og_train_dataset.y, og_train_dataset.AAs):
+            labels.append(l if a == "N" and l == 0 else 3)
+        train_idx, val_idx = next(GroupShuffleSplit(test_size=0.1, random_state=42).split(og_train_dataset.X, labels, og_train_dataset.pids)) 
+        self.train_dataset = Subset(og_train_dataset, train_idx)
+        self.val_dataset = Subset(og_train_dataset, val_idx) 
+        
+        #self.val_dataset = GlycoDataset("val", self.config)
+        """self.O_test_dataset = GlycoDataset("O_test", self.config, 370381)
         self.N_test_dataset = GlycoDataset("N_test", self.config)
-        self.test_dataset = ConcatDataset([self.O_test_dataset, self.N_test_dataset])
+        self.test_dataset = ConcatDataset([self.O_test_dataset, self.N_test_dataset])"""
 
-        # Shuffel train data #reproducibility #science
-        
-        """# Create an array of indices that correspond to the order of IDs in 'b'
-        if not (self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt").exists():
-            self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
-            np.save(self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt", self.shuffled_ids)
-        else:
-            self.shuffled_ids = np.load(self.np_path / f"shuffle_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt", allow_pickle=True)
-
-        index_mapping = {id: index for index, id in enumerate(self.shuffled_ids)}
-        sorted_indices = np.zeros(len(self.shuffled_ids), dtype=int)
-        for items in index_mapping.items():
-            sorted_indices[items[1]] = np.where(items[0] == self.train_dataset.pids)[0][0]
-        
-        self.train_dataset.X = self.train_dataset.X[sorted_indices]
-        self.train_dataset.y = self.train_dataset.y[sorted_indices]
-        self.train_dataset.pids = self.shuffled_ids"""
 
         if len(self.config.classes) < 3:
-            self.train_dataset.y = np.array([arr.astype(np.float16) 
+            og_train_dataset.y = np.array([arr.astype(np.float16) 
                                              if arr.dtype != np.float16 
                                              else arr 
-                                             for arr in self.train_dataset.y], dtype=object)
-            self.val_dataset.y = np.array([arr.astype(np.float16)
-                                           if arr.dtype != np.float16
-                                           else arr
-                                           for arr in self.val_dataset.y], dtype=object)
-            self.O_test_dataset.y = np.array([arr.astype(np.float16)
-                                            if arr.dtype != np.float16
-                                            else arr
-                                            for arr in self.O_test_dataset.y], dtype=object)
-            self.N_test_dataset.y = np.array([arr.astype(np.float16)
-                                            if arr.dtype != np.float16
-                                            else arr
-                                            for arr in self.N_test_dataset.y], dtype=object)
+                                             for arr in og_train_dataset.y])
+
             
                     
         if (self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt").exists():
@@ -156,8 +138,8 @@ class GlycoDataModule(pl.LightningDataModule):
             return
         
         # calculate class weights for the loss function
-        #ys = np.apply_along_axis(np.concatenate, 0, self.train_dataset.y)
-        counts = np.unique(self.train_dataset.y, return_counts=True)[1]
+        #ys = np.apply_along_axis(np.concatenate, 0, og_train_dataset.y)
+        counts = np.unique(og_train_dataset.y, return_counts=True)[1]
         # check if class weights are already calculated
 
         if len(self.config.classes) < 3:
@@ -168,12 +150,12 @@ class GlycoDataModule(pl.LightningDataModule):
         torch.save(self.class_weights, self.np_path / f"class_weights_c{len(self.config.classes)}_{'_'.join(self.config.classes.keys())}.pt")
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, num_workers=self.config.num_workers, batch_sampler=GroupedBatchSampler(self.train_dataset.pids, self.config.batch_size))
+        return DataLoader(self.train_dataset, num_workers=self.config.num_workers, batch_sampler=GroupedBatchSampler(self.train_dataset.dataset.pids[self.train_dataset.indices], self.config.batch_size))
     
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
     
-    def test_dataloader(self):
+    """def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
     
     def O_test_dataloader(self):
@@ -181,14 +163,14 @@ class GlycoDataModule(pl.LightningDataModule):
     
     def N_test_dataloader(self):
         return DataLoader(self.N_test_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
-
+"""
     
 
 # TODO add multiple dataset classes 
 # one for the baseline -> simply use the embedding of the glyco site 
 # one for the baseline + dialated mean embedding -> use the embedding of the glyco site and the dialated mean embedding e.g. 101010N010101
 class GlycoDataset(Dataset):
-    def __init__(self, split: str, config: GlycoDataConfig) -> None:
+    def __init__(self, split: str, config: GlycoDataConfig, seed: int = None, generate_numpy: bool = True) -> None:
         super().__init__()
         self.split = split
         self.data_dir = Path(config.data_dir)
@@ -202,6 +184,9 @@ class GlycoDataset(Dataset):
             self.split = "train_more_neg"
         self.use_neg_diff = config.use_neg_diff if self.split == "train" else False
 
+        self.seed = seed if seed else random.randint(0, 100000)
+        self.numpy = generate_numpy
+        
         self.X = None
         self.y = None
         self.pids = None
@@ -220,45 +205,54 @@ class GlycoDataset(Dataset):
             print("Creating numpy arrays...")
             
 
-        fasta = Fasta(self.data_dir / f"{self.split}.o")
-        embeddings = h5py.File(self.embedding_path, 'r')
-        X = []
-        y = []
-        pids = []
-        classes = np.array(list(self.config.classes.keys()))
+        df = pd.read_csv(self.data_dir / f"{self.split}_rr_df.csv")
+        if self.num_classes < 3:
+            df = df[df["label"].isin(self.config.classes.keys())]
+        #undersample for O and N seperately
+        O_df = df.loc[(df["AA"] == "S") | (df["AA"] == "T")]
+        N_df = df[df["AA"] == "N"]
         
-        for pid, seqs in tqdm(fasta.items()):
-            labels = np.array(list(seqs[1]))
-            samples = np.isin(labels, classes) #bool array
+        ros = RandomUnderSampler(random_state=self.seed)
+        
+        O_df, _ = ros.fit_resample(O_df, O_df["label"])
+        N_df, _ = ros.fit_resample(N_df, N_df["label"])
+        df = pd.concat([O_df, N_df])                   
+        with h5py.File(self.embedding_path, 'r') as embeddings:
+            y = df["label"].values
+            pids = df["PID"].values
+            positions = df["Position"].values
+            AAs = df["AA"].values 
+            classes = np.array(list(self.config.classes.keys()))
 
-            # if class 2 -> filter out the negatives of the other classes !!!
-            if len(classes) < 3 and not self.use_neg_diff:
-                # leads to IndexError: index 1 is out of bounds for axis 0 with size 1 in the datamodul class weights 
-                seq = np.array(list(seqs[0]))
-                if "N" in classes:
-                    # remove indices from samples where the label in temp_labels is T (negative) AND the character in seq at the same position is not N
-                    samples = samples & ~((labels == "T") & (seq != "N"))
-                else:
-                    samples = samples & ~((labels == "T") & (seq == "N"))
-            
-            if not np.any(samples):
-                continue
+            # Preallocate memory for X if the size is known
+            X = np.empty((len(pids), embeddings[list(embeddings.keys())[0]].shape[1]))
 
-            try:
-                embedding = embeddings[pid.replace("-", "_").replace(".", "_")][()]
-            except:
-                print(f"Protein {pid}  not found in embeddings!")
-                continue
-            X.extend(embedding[samples])
-            y.extend(self.to_classes(labels[samples]))
-            pids.extend([pid]*labels[samples].shape[0])
+            # Perform string replacements once
+            processed_pids = [pid.replace("-", "_").replace(".", "_") for pid in pids]
+
+            for idx, (pid, pos) in enumerate(tqdm(zip(processed_pids, positions), total=len(processed_pids))):
+                try:
+                    embedding = embeddings[pid][()]
+                    X[idx] = embedding[pos - 1]
+                except KeyError:
+                    print(f"Protein {pid} not found in embeddings!")
+                    continue
+                except IndexError:
+                    print(f"Position {pos} not found in protein {pid}!")
+                    continue
+
+        self.X = X
+ 
         
         self.X = np.array(X)
         self.y = np.array(y)
         self.pids = np.array(pids)
-        np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.X)
-        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.y)
-        np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.pids)
+        self.AAs = np.array(AAs)
+        if self.numpy:
+            np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.X)
+            np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.y)
+            np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.pids)
+            np.save(str(self.np_path / f"{self.split}_AAs_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"), self.AAs)
     
     def __len__(self):
         return len(self.X)
