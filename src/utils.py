@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 import numpy as np
 from pytorch_lightning import seed_everything
 import torch  
@@ -139,3 +140,13 @@ def fetch_ncbi_sequences(ncbi_ids):
         fetch_sequence(ncbi_id)
     
     return sequences
+
+def read_vespag(pid: str, data_dir: str):
+    try: 
+        vespag_df = pd.read_csv(f"{data_dir}/{pid}.csv")
+    except FileNotFoundError:
+        print(f"File {data_dir}/{pid}.csv not found")
+    
+    vespag_df[['AA', 'Position', 'Mutation']] = pd.DataFrame(vespag_df['Mutation'].apply(lambda x: [x[0], int(x[1:-1]), x[-1]]).tolist(), 
+                                                              columns=['AA', 'Position', 'Mutation'])
+    return vespag_df
