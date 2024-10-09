@@ -1,227 +1,178 @@
-from copy import deepcopy
+import gzip
 import json
-from pathlib import Path
 import sys
-from typing import Optional
-from tempfile import gettempdir
-import numpy as np
-from tqdm import tqdm
-from biotite.structure.io.pdbx import PDBxFile, get_structure, get_sequence
-import biotite.structure as biostruc
-import biotite.database.rcsb as rcsb
-from biotite.sequence import ProteinSequence, AlphabetError
-from .fasta import Fasta
+from copy import deepcopy
 from os import path
+from pathlib import Path
+from tempfile import gettempdir
+from typing import Optional
+
+import Bio.PDB as PDB
+import biotite.database.rcsb as rcsb
+import biotite.structure as biostruc
+import numpy as np
+import cProfile, pstats, io
+from pstats import SortKey
+from Bio import SeqIO
+from Bio.PDB import MMCIFParser
+from biotite.sequence import AlphabetError, ProteinSequence
+from biotite.structure.io.pdbx import CIFFile, get_sequence, get_structure
+from tqdm import tqdm
+
+from src.data.fasta import Fasta
+
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from utils import align_sequences_nw
 import argparse
 import multiprocessing as mp
+from multiprocessing.pool import Pool
 import os
 
-# TODO find a way to automatically substitute non-generic amino acid with generic ones 
-aa_dict = None
+import warnings
 
-list_of_bad_prots = ["1VOQ-a", "1VOS"]
-def calculate_scores_for_protein(protein: str, 
-                                 pdb_path: str,
-                                 map_missing_res: list[str], 
-                                 protein_seq: list, 
-                                 sub_dict: Optional[dict] = None) -> tuple:
-    """
-    Calculates the SASA and B-factor scores for a given protein. 
-    The SASA and B-factor scores are calculated for each residue in the protein.
-    
-    Parameters
-    ----------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not the minus sign.
-    pdb_path : str the path to the PDB files
-    map_missing_res : list[str] a list of the same length as the protein sequence, where each element is either '-' or 'X'.
-    protein_seq : list[str] the protein sequence in the one-letter amino acid code.
-    sub_dict : dict a dictionary that maps non-generic amino acids to generic ones. In case this function is executed outside the script, a substitution dictionary must be provided.
-    
-    Returns
-    -------
-    protein : str the protein name in the format <PDB ID>-<chain ID> Note that the character '-' is not the minus sign.
-    res_sasa_masked : np.array the SASA scores for each residue in the protein
-    res_bfactor_masked : np.array the B-factor scores for each residue in the protein
-    """
-    cif_header: str = protein.split('-')[0]
-    global aa_dict
-    if sub_dict is None and not aa_dict:
-        raise ValueError("No substitution dictionary provided!\nIf you import this function from another script, please provide a substitution dictionary")
-    elif sub_dict is not None:
-        aa_dict = sub_dict
+
+
+from utils import (
+    HOA_TIEN,
+    TO_RSA,
+    SUBSTITUTION_DICT,
+    align_sequences_nw,
+    fetch_pdb_sequence,
+    get_auth_to_label_asym_mapping,
+    get_relative_sa,
+    calculate_b_sasa_scores,
+)
+
+# TODO find a way to automatically substitute non-generic amino acid with generic ones
+
+def debug_calculate_scores_for_protein(
+    fasta_file: Fasta, nprocesses: int, mapping_dict: dict, cif_dir, upper: bool = True
+) -> tuple[dict, dict]:
+    results = []
+    for idx, record in tqdm(enumerate(fasta_file)):
         
-
-    try:
-        pdbx = PDBxFile.read(os.path.join(pdb_path, f'{cif_header}.cif'))
-    except FileNotFoundError:
-        print(f'Could not find PDBx file for {protein}\nFetching from RCSB...')
-        file_path = rcsb.fetch(cif_header, "cif")
-        pdbx = PDBxFile.read(file_path)
-    try:
-        struct = get_structure(pdbx, model=1, extra_fields=["b_factor"])
-    except ValueError:
-        print(f'Skipping protein {protein}...\n')
-        return protein, None, None
-    # Thank you biotite for this wonderful class, NOT!
-    seq = ProteinSequence(list(("".join(protein_seq)).replace('U', 'C').replace("O", "K")))
-
-    seq_length = len(seq)
-    chain_id = protein.split('-')[1]
-    chain_starts = biostruc.get_chain_starts(struct).tolist()
-    chain_ids = biostruc.get_chains(struct).tolist()
-    try:
-        assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
-    except AssertionError as e:
-        print(e)
-        return protein, None, None
-    if biostruc.get_chain_count(struct) == 1 or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]:
-        struct = struct[chain_starts[chain_ids.index(chain_id)]:]
-    else:
-        struct = struct[chain_starts[chain_ids.index(chain_id)]:chain_starts[chain_ids.index(chain_id) + 1]]
-    
-    struct = struct[biostruc.filter_amino_acids(struct)]
-    try:
-        atom_sasa_scores = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
-    except ValueError:
-        print(f'Skipping protein {protein}...\n')
-        return protein, None, None
-
-    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa_scores, np.nansum)
-    res_bfactor = np.array([atom.b_factor for atom in struct if atom.atom_name == "CA"])
-
-    # clip so the mask can be recognized by the model
-    res_sasa = res_sasa.clip(0.00001)
-    res_bfactor = res_bfactor.clip(0.00001)
-
-    # mask the residues that are not in the PDB files, due to disorder
-    disorder_residues = list("".join(map_missing_res))
-    non_disorder_indices = [i for i, x in enumerate(disorder_residues) if x == "-"]
-    
-    if len(disorder_residues) != res_sasa.shape[0]:
-        res_sasa_masked = np.zeros(len(disorder_residues))
-        res_bfactor_masked = np.zeros(len(disorder_residues))
-
-        """
-        see if the per residue SASA and B-factor scores can be mapped to the primary 
-        sequence when using only non-disordered residues
-        """
         try:
-            
-            res_sasa_masked[non_disorder_indices] = res_sasa
-            res_bfactor_masked[non_disorder_indices] = res_bfactor
-        except ValueError:
-            seq_chain_a_single = []
-            for aa in biostruc.get_residues(struct)[1]:
-                try:
-                    seq_chain_a_single.append(ProteinSequence.convert_letter_3to1(aa))
-                except KeyError:
-                    try:
-                        seq_chain_a_single.append(aa_dict[aa])
-                    except KeyError:
-                        seq_chain_a_single.append('X')
-            # TODO shouldn't this be just seq against seq_chain_a_single ?
-            alignment = align_sequences_nw(seq, "".join(seq_chain_a_single))
-            primary_seq_overlap = np.array(list(alignment[0])) != '-'
-            seq_chain_overlap = np.array(list(alignment[1])) != '-'
-
-            """
-            Case 1 - the alignment has gaps in the primary sequence and in the sequence from the PDB file
-            Solution - remove the part of the sequence that causes the gap in the primary sequence, 
-            afterwards treat it like case 2
-
-            Case 2 - the alignment has gaps in the sequence from the PDB file, but not in the primary sequence
-            Solution - mask the residues that are not in the PDB file, but are in the primary sequence    
-            
-            Case 3 - the alignment has gaps in the primary sequence, but not in the sequence from the PDB file
-            Solution - mask the residues that are not in the primary sequence, but are in the PDB file
-            Not sure if this case is possible, but it's here just in case   
-            """
-            if np.any(primary_seq_overlap == False) and np.any(seq_chain_overlap == False):
-                seq_chain_overlap_cut = seq_chain_overlap[primary_seq_overlap]
-                # TODO remove the part that causes the gap from SASA and B-factor arrays
-                sasa_index = []
-                counter = 0
-                for i in range(len(primary_seq_overlap)):
-                    if seq_chain_overlap[i] == True and primary_seq_overlap[i] != False:
-                        sasa_index.append(counter)
-                        counter += 1
-                try:
-                    res_sasa_masked[seq_chain_overlap_cut] = res_sasa[sasa_index]
-                except IndexError as i:
-                    print(f'Skipping protein {protein}...\n')
-                    print(i)
-                    return protein, None, None
-                res_bfactor_masked[seq_chain_overlap_cut] = res_bfactor[sasa_index]
-
-            elif np.any(seq_chain_overlap == False):
-                try:
-                    res_sasa_masked[seq_chain_overlap] = res_sasa
-                except IndexError as i:
-                    print(f'Skipping protein {protein}...\n')
-                    print(i)
-                    return protein, None, None
-                res_bfactor_masked[seq_chain_overlap] = res_bfactor
-            
-            elif np.any(primary_seq_overlap == False):
-                try:
-                    res_sasa_masked = res_sasa[primary_seq_overlap]
-                except IndexError as i:
-                    print(f'Skipping protein {protein}...\n')
-                    print(i)
-                    return protein, None, None
-                res_bfactor_masked = res_bfactor[primary_seq_overlap]
-            
-            else:
-                print(f"Investiage protein {protein}")
-                return protein, None, None
-        return protein, res_sasa_masked.tolist(), res_bfactor_masked.tolist()
-    return protein, res_sasa.tolist(), res_bfactor.tolist()
+            pr = cProfile.Profile()
+            pr.enable()
+            results.append(
+                calculate_b_sasa_scores(
+                    record.id,
+                    mapping_dict[record.id.split("_")[0]],
+                    record.seq,
+                    cif_dir,
+                )
+            )
+            pr.disable()
+            s = io.StringIO()
+            sortby = SortKey.CUMULATIVE
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            print(s.getvalue())
+            break
+        except KeyError:
+            print(f"Could not find mapping for {record.id}")
+            continue
+    sasa_scores = {
+        protein: [sasa_scores]
+        for protein, sasa_scores, _, _ in results
+        if sasa_scores is not None
+    }
+    bfactor_scores = {
+        protein: [bfactor_scores]
+        for protein, _, bfactor_scores, _ in results
+        if bfactor_scores is not None
+    }
+    protein_seq = {
+        protein: protein_seq
+        for protein, _, _, protein_seq in results
+        if protein_seq is not None
+    }
+    return sasa_scores, bfactor_scores, protein_seq
 
 
-def calculate_scores(fasta_file: Fasta, pdb_path: str, nprocesses: int, mapping_fasta: Fasta, upper: bool = True) -> tuple[dict, dict]:
+def calculate_scores(
+    fasta_file: Fasta, nprocesses: int, mapping_dict: dict, cif_dir: str, upper: bool = True
+) -> tuple[dict, dict]:
     """
-    Calculates the SASA and B-factor scores for every protein in the fasta file. 
+    Calculates the SASA and B-factor scores for every protein in the fasta file.
     The SASA and B-factor scores are calculated for each residue in the protein.
-    
+
     Parameters
     ----------
     fasta_file (Fasta):  the fasta file containing the protein sequences
     pdb_path (str):  the path to the PDB files
     nprocesses (int):  the number of processes to use for multiprocessing
     mapping_fasta (Fasta):  the fasta file containing the mapping between the primary sequence and disorder/ordered residues. In addition contains the sequence and secondary structure of the protein.
-    
+
     Returns
     -------
     sasa_scores (dict):  the SASA scores for each residue in the protein
     bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
-    
-    proteins = fasta_file.get_headers()
-    with mp.Pool(int(nprocesses)) as pool:
-        results = [pool.apply_async(calculate_scores_for_protein, 
-                                    args=(protein, pdb_path, 
-                                          mapping_fasta[":".join((protein.upper() if upper else protein + "-disorder").split("-"))], 
-                                          mapping_fasta[":".join((protein.upper() if upper else protein + "-sequence").split("-"))])) 
-                                          for protein in proteins]
+    # warnings.filterwarnings("error")
+    with Pool(int(nprocesses)) as pool:
+        results = []
+        for record in fasta_file:
+            try:
+                results.append(
+                    pool.apply_async(
+                        calculate_b_sasa_scores,
+                        args=(
+                            record.id,
+                            mapping_dict[record.id.split("_")[0]],
+                            record.seq,
+                            cif_dir,
+                        ),
+                    )
+                )
+            except KeyError:
+                print(f"Could not find mapping for {record.id}")
+                continue
+        """results = [pool.apply_async(calculate_b_sasa_scores, 
+                                    args=(record.id, 
+                                          mapping_dict[record.id.split('_')[0]],
+                                          record.seq)) 
+                                          for record in fasta_file]"""
+        print(results)
         results = [r.get() for r in tqdm(results)]
-    sasa_scores = {protein: [sasa_scores] for protein, sasa_scores, _ in results if sasa_scores is not None}
-    bfactor_scores = {protein: [bfactor_scores] for protein, _, bfactor_scores in results if bfactor_scores is not None}
-    return sasa_scores, bfactor_scores
-
+    sasa_scores = {
+        protein: [sasa_scores]
+        for protein, sasa_scores, _, _ in results
+        if sasa_scores is not None
+    }
+    bfactor_scores = {
+        protein: [bfactor_scores]
+        for protein, _, bfactor_scores, _ in results
+        if bfactor_scores is not None
+    }
+    protein_seq = {
+        protein: protein_seq
+        for protein, _, _, protein_seq in results
+        if protein_seq is not None
+    }
+    return sasa_scores, bfactor_scores, protein_seq
 
 
 def main(args: Optional[list] = None):
     # Initialize ArgumentParser
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-s', '--fasta_files', nargs='+', help='Path(s) to fasta files')
-    parser.add_argument('-p', '--pdb_path', required=True, help='Path to PDB structures')
-    parser.add_argument("-m", "--mapping_file", required=True, help="Path to mapping file, which is required to fill in missing residues")
-    parser.add_argument('-o', '--output_path', required=True, help='Output path')
-    parser.add_argument('-n', '--n_processes', default=16, help='Number of processes to use', type=int)
-    parser.add_argument('-u', '--upper', action='store_true', help='Use uppercase protein names')
+    parser.add_argument("-s", "--fasta_files", nargs="+", help="Path(s) to fasta files")
+    parser.add_argument(
+        "-p", "--pdb_path", required=False, help="Path to PDB structures"
+    )
+    parser.add_argument(
+        "-m",
+        "--mapping_file",
+        required=True,
+        help="Path to mapping file, which is required to fill in missing residues",
+    )
+    parser.add_argument("-o", "--output_path", required=True, help="Output path")
+    parser.add_argument(
+        "-n", "--n_processes", default=16, help="Number of processes to use", type=int
+    )
+    parser.add_argument(
+        "-u", "--upper", action="store_true", help="Use uppercase protein names"
+    )
 
     # Parse arguments
     if args is None:
@@ -232,20 +183,34 @@ def main(args: Optional[list] = None):
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
-    mapping_fasta = Fasta(mapping_file)
+    mapping_dict = json.load(open(mapping_file))
+    # mapping_fasta = Fasta(mapping_file)
     upper = args.upper
-    global aa_dict
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../data/substitution_dict.json"), "r") as f:
-        aa_dict = json.load(f)
-        
+
     for fasta_path in fasta_files:
-        fasta = Fasta(fasta_path)
-        sasa_scores, bfactor_scores = calculate_scores(fasta, pdb_path, args.n_processes, mapping_fasta, upper)
-        deepcopy(fasta).append(bfactor_scores).write_fasta(f'{output_path}/bfactor/{Path(fasta_path).stem}_bfactor.fasta', overwrite=True)
-        fasta.append(sasa_scores).write_fasta(f'{output_path}/sasa/{Path(fasta_path).stem}_sasa.fasta', overwrite=True)
+        fasta = SeqIO.parse(fasta_path, "fasta")
+        # fasta = Fasta(fasta_path)
+        
+        
+        sasa_scores, bfactor_scores, seqs = calculate_scores(
+            fasta, args.n_processes, mapping_dict, pdb_path, upper
+        )
+        
+        
+        with open(f"{output_path}/pdb_all_bfactor.tsv", "w") as bf, open(
+            f"{output_path}/pdb_all_sasa.tsv", "w"
+        ) as sasa:
+            bf.write("Protein\tPosition\tAA\tnorm_Bfactor\n")
+            sasa.write("Protein\tPosition\tAA\tRSA\n")
+            for protein, scores in bfactor_scores.items():
+                seq = seqs[protein]
+                for i, score in enumerate(scores[0]):
+                    bf.write(f"{protein}\t{i}\t{seq[i]}\t{score}\n")
+            for protein, scores in sasa_scores.items():
+                seq = seqs[protein]
+                for i, score in enumerate(scores[0]):
+                    sasa.write(f"{protein}\t{i}\t{seq[i]}\t{score}\n")
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

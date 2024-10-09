@@ -1,14 +1,68 @@
-import random
-import pandas as pd
-import numpy as np
-from pytorch_lightning import seed_everything
-import torch  
-from tqdm import tqdm
-import math
-from Bio import Entrez
-from Bio.Seq import Seq
 import concurrent.futures
+import gzip
+import json
+import math
+import random
+import sys
+from copy import deepcopy
+from os import path
+from pathlib import Path
+from tempfile import gettempdir
+from typing import Optional
+
+import Bio.PDB as PDB
+import biotite.database.rcsb as rcsb
+import biotite.structure as biostruc
+import numpy as np
+import pandas as pd
 import requests
+import torch
+from Bio import Entrez, SeqIO
+from Bio.PDB import MMCIFParser
+from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+from Bio.Seq import Seq
+from biotite.sequence import AlphabetError, ProteinSequence
+from biotite.structure.io.pdbx import CIFFile, get_sequence, get_structure
+from pytorch_lightning import seed_everything
+from tqdm import tqdm
+
+from src.data.fasta import Fasta
+
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+import argparse
+import multiprocessing as mp
+import os
+from multiprocessing.pool import Pool
+
+
+
+QUERY = """
+query {
+  entry(entry_id: "YOUR_PDB_ID_HERE") {
+    polymer_entities {
+      entity_poly {
+        pdbx_seq_one_letter_code
+      }
+      rcsb_polymer_entity_container_identifiers {
+        auth_asym_ids
+      }
+    }
+  }
+}
+"""
+URL_PDB = "https://data.rcsb.org/graphql"
+HOA_TIEN = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "X": 180,"Y": 255, "V": 165, "U": 148, "O": 230}
+TO_RSA = np.vectorize(HOA_TIEN.get)
+SUBSTITUTION_DICT = {"CYG": "C", "TRN": "W", "IAS": "D", "CSD": "C", "CSO": "C", "TRO": "W", "CSS": "C", "SEP": "S", "DDZ": "A", 
+                     "PCA": "E", "CGU": "E", "OCS": "C", "TYI": "Y", "LLP": "K", "CXM": "M", "KCX": "K", "AYA": "A", "TRW": "W", 
+                     "CME": "C", "NEP": "H", "CAS": "C", "CSX": "C", "TPQ": "Y", "NLE": "L", "LYZ": "K", "SEB": "S", "LED": "L", 
+                     "CAF": "C", "MCS": "C", "CS4": "C", "TYS": "Y", "SVY": "S", "MLZ": "K", "DAH": "F", "TY2": "Y", "KYN": "W", 
+                     "LP6": "K", "FME": "M", "ALY": "K", "LCK": "K", "LA2": "K", "MSO": "M", "KPI": "K", "MEQ": "Q", "HIC": "H", 
+                     "LVN": "V", "MHO": "M", "SNN": "N", "TPO": "T", "IYR": "Y", "TRQ": "W", "QCS": "C", "SME": "M", "ASB": "D", 
+                     "0AF": "W", "CCS": "C", "SCH": "C", "GPL": "K", "LYR": "K", "MHS": "H", "AGM": "R", "MGN": "Q", "GL3": "G", 
+                     "DYA": "D", "SMC": "C", "SAC": "S", "YCM": "C", "OCY": "C", "PHI": "F", "ALS": "A", "PTR": "Y", "ALO": "T", 
+                     "GLU": "N", "ALA": "H", "HYP": "P", "SNC": "C", "6V1": "C", "BFD": "D", "PYL": "K", "SEC": "C", "AIB": "A", 
+                     "PHL": "F", "DPR": "P", "DBZ": "A", "DAL": "A", "MLY": "K"}
 
 def seed_all(seed=13):
     """
@@ -148,6 +202,173 @@ def read_vespag(pid: str, data_dir: str):
         print(f"File {data_dir}/{pid}.csv not found")
         return None
     
-    vespag_df[['AA', 'Position', 'Mutation']] = pd.DataFrame(vespag_df['Mutation'].apply(lambda x: [x[0], int(x[1:-1]), x[-1]]).tolist(), 
+    vespag_df[['AA', 'Position', 'Mutation']] = pd.DataFrame(vespag_df['Mutation']
+                                                             .apply(lambda x: [x[0], int(x[1:-1]), x[-1]]).tolist(), 
                                                               columns=['AA', 'Position', 'Mutation'])
     return vespag_df
+
+def fetch_pdb_sequence(pdb_id, label_asym_id) -> str:
+    query = QUERY.replace("YOUR_PDB_ID_HERE", pdb_id)
+    payload = {
+    "query": query
+    }
+    # Send the request
+    response_pdb = requests.post(URL_PDB, json=payload)
+    if response_pdb.status_code == 200:
+        data = response_pdb.json()
+        
+        # Check if data is not None and has the expected structure
+        if data['data'] and data['data']['entry'] and data['data']['entry']['polymer_entities']:
+            # Extract and process data for each polymer entity
+            for entity in data['data']['entry']['polymer_entities']:
+                sequence = entity['entity_poly']['pdbx_seq_one_letter_code']
+                chain_ids = entity['rcsb_polymer_entity_container_identifiers']['auth_asym_ids']
+                
+                for chain_id in chain_ids:
+                    if chain_id != label_asym_id:
+                        continue
+                    # Prepare header for the chain
+                    return sequence
+    print(f"Could not fetch sequence for {pdb_id} and {label_asym_id}")
+    print(response_pdb.text)
+
+def get_auth_to_label_asym_mapping(cif_file):
+    # Parse the mmCIF file
+    # if gzipped file
+    if isinstance(cif_file, str):
+        cif_file = Path(cif_file)
+    if '.gz' in cif_file.suffixes:
+        with gzip.open(cif_file, 'rt') as f:
+            cif_dict = MMCIF2Dict(f)
+    else:
+        cif_dict = MMCIF2Dict(cif_file)
+    
+    # Access the mmCIF dictionary from the structure
+
+    # Extract the label_asym_id and auth_asym_id mapping
+    label_asym_ids = cif_dict["_atom_site.label_asym_id"]
+    auth_asym_ids = cif_dict["_atom_site.auth_asym_id"]
+    
+    # Create a dictionary to store unique mappings
+    mapping = {}
+    
+    # Iterate over atoms and map label_asym_id to auth_asym_id
+    for label_asym, auth_asym in zip(label_asym_ids, auth_asym_ids):
+        if auth_asym not in mapping:  # Avoid duplicates
+            mapping[auth_asym] = label_asym
+    
+    return mapping
+
+def get_relative_sa(seq, sasa):
+    try:
+        hoa = TO_RSA(np.array(list(seq)))
+    except TypeError:
+        print(
+            f"No max SA value for the residue {set(list(seq)).difference(HOA_TIEN.keys())}"
+        )
+        raise
+    return sasa / hoa
+
+def get_pdb_structure(protein, cif_dir):
+    cif_header, chain_id = protein.split("_")
+    cif = None
+    if cif_dir is not None:
+        cif_dir = Path(cif_dir)
+        cif = cif_dir / cif_header.lower()[1:3] / f"{cif_header.lower()}.cif"
+        if cif.with_suffix(".cif.gz").exists():
+            cif = cif.with_suffix(".cif.gz")
+            
+        elif not cif.exists():
+            cif = None
+            
+    if cif is None:
+        try:
+            cif = PDB.PDBList().retrieve_pdb_file(cif_header, pdir=gettempdir(), file_format='mmCif')
+        except FileNotFoundError:
+            print(f'Could not find PDB file for {protein}\nFetching from RCSB...')
+            return None, None
+        except Exception as e:
+            print(f"Could not fetch PDB file for {protein}\n{e}")
+            return None, None
+        
+    if '.gz' in Path(cif).suffixes:
+        try:
+            with gzip.open(
+                cif, "rt"
+            ) as f:
+                cif_obj = CIFFile().read(f)
+                struct = get_structure(cif_obj, model=1, extra_fields=["b_factor"])
+        except ValueError:
+            print(f"Skipping protein {protein}...\nCould not parse structure")
+            return None, None 
+    else:
+        try:
+            with open(cif, "r") as f:
+                cif_obj = CIFFile().read(f)
+                struct = get_structure(cif_obj, model=1, extra_fields=["b_factor"])
+        except ValueError:
+            print(f"Skipping protein {protein}...\nCould not parse structure")
+            return None, None 
+    return struct, cif
+
+def calculate_b_sasa_scores(
+    protein, mapping, protein_seq, cif_dir):
+    cif_header, chain_id = protein.split("_")
+    struct, cif = get_pdb_structure(protein, cif_dir)
+    if struct is None or struct.coord.size == 0:
+        return protein, None, None, None
+    # well this is a mess, the mappings were created using sifts which uses the label_asym_id, but the structure uses the auth_asym_id
+    asym_mappping = get_auth_to_label_asym_mapping(cif)
+    try:
+        mapping = {v: k for k, v in mapping[asym_mappping[chain_id]].items()}
+    except KeyError:
+        return protein, None, None, None
+    
+
+    chain_starts = biostruc.get_chain_starts(struct).tolist()
+    chain_ids = biostruc.get_chains(struct).tolist()
+    try:
+        assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
+    except AssertionError as e:
+        print(e)
+        return protein, None, None, None
+    if (
+        biostruc.get_chain_count(struct) == 1
+        or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]
+    ):
+        struct = struct[chain_starts[chain_ids.index(chain_id)] :]
+    else:
+        struct = struct[
+            chain_starts[chain_ids.index(chain_id)] : chain_starts[
+                chain_ids.index(chain_id) + 1
+            ]
+        ]
+
+    struct = struct[biostruc.filter_amino_acids(struct)]
+    sasa = np.full(len(protein_seq), np.nan)
+    bfactor = np.full(len(protein_seq), np.nan)
+    
+    try:
+        atom_sasa = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
+    except ValueError:
+        return protein, None, None, None
+    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
+    
+    for idx, res_id in enumerate(biostruc.get_residues(struct)[0]):
+        if res_id not in mapping:
+            continue
+        sasa[int(mapping[res_id])] = res_sasa[idx]
+        for atom in struct:
+            if atom.res_id == res_id and atom.atom_name == "CA":
+                bfactor[int(mapping[res_id])] = atom.b_factor
+    
+    if all(bfactor == 0):
+        return protein, None, None, None
+    bfactor = np.clip(bfactor, 0.00001, None)
+    bfactor = np.nan_to_num(bfactor, nan=-1)
+
+    sasa = np.clip(sasa, 0.00001, None)
+    sasa = get_relative_sa(protein_seq, sasa)
+    sasa = np.nan_to_num(sasa, nan=-1)
+
+    return protein.replace("_", "-"), sasa.tolist(), bfactor.tolist(), protein_seq
