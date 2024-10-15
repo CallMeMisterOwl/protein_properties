@@ -1,18 +1,21 @@
+import cProfile
 import gzip
+import io
 import json
+import pstats
 import sys
 from copy import deepcopy
 from os import path
 from pathlib import Path
+from pstats import SortKey
 from tempfile import gettempdir
 from typing import Optional
 
 import Bio.PDB as PDB
 import biotite.database.rcsb as rcsb
 import biotite.structure as biostruc
+import h5py
 import numpy as np
-import cProfile, pstats, io
-from pstats import SortKey
 from Bio import SeqIO
 from Bio.PDB import MMCIFParser
 from biotite.sequence import AlphabetError, ProteinSequence
@@ -24,32 +27,33 @@ from src.data.fasta import Fasta
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import argparse
 import multiprocessing as mp
-from multiprocessing.pool import Pool
 import os
-
 import warnings
-
-
+from multiprocessing.pool import Pool
 
 from utils import (
     HOA_TIEN,
-    TO_RSA,
     SUBSTITUTION_DICT,
+    TO_RSA,
     align_sequences_nw,
+    # calculate_b_sasa_scores,
     fetch_pdb_sequence,
     get_auth_to_label_asym_mapping,
     get_relative_sa,
-    calculate_b_sasa_scores,
+    get_pdb_structure,
 )
 
+mapping_h5 = None
+
 # TODO find a way to automatically substitute non-generic amino acid with generic ones
+
 
 def debug_calculate_scores_for_protein(
     fasta_file: Fasta, nprocesses: int, mapping_dict: dict, cif_dir, upper: bool = True
 ) -> tuple[dict, dict]:
     results = []
     for idx, record in tqdm(enumerate(fasta_file)):
-        
+
         try:
             pr = cProfile.Profile()
             pr.enable()
@@ -89,8 +93,93 @@ def debug_calculate_scores_for_protein(
     return sasa_scores, bfactor_scores, protein_seq
 
 
+
+
+def calculate_b_sasa_scores(protein, protein_seq, cif_dir):
+    global mapping_h5
+    cif_header, chain_id = protein.split("_")
+    struct, cif = get_pdb_structure(protein, cif_dir)
+    if struct is None or struct.coord.size == 0:
+        return protein, None, None, None
+
+    # well this is a mess, the mappings were created using sifts which uses the label_asym_id, but the structure uses the auth_asym_id
+    asym_mappping = get_auth_to_label_asym_mapping(cif)
+    mapping = mapping_h5[cif_header][asym_mappping[chain_id]]["mapping"][()]
+    chain_starts = biostruc.get_chain_starts(struct).tolist()
+    chain_ids = biostruc.get_chains(struct).tolist()
+    try:
+        assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
+    except AssertionError as e:
+        print(e)
+        return protein, None, None, None
+    if (
+        biostruc.get_chain_count(struct) == 1
+        or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]
+    ):
+        struct = struct[chain_starts[chain_ids.index(chain_id)] :]
+    else:
+        struct = struct[
+            chain_starts[chain_ids.index(chain_id)] : chain_starts[
+                chain_ids.index(chain_id) + 1
+            ]
+        ]
+
+    struct = struct[biostruc.filter_amino_acids(struct)]
+    sasa = np.full(len(protein_seq), np.nan)
+    bfactor = np.full(len(protein_seq), np.nan)
+
+    try:
+        atom_sasa = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
+    except ValueError:
+        return protein, None, None, None
+    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
+    
+    #res_ids = biostruc.get_residues(struct)[0]
+    
+    # TODO make this pretty and efficient
+    mapping = np.array(mapping)
+    for idx, res_id in enumerate(biostruc.get_residues(struct)[0]):
+        if res_id not in mapping or res_id == -1:
+            continue
+        mask = mapping == res_id
+        try:
+            assert sum(mask) <= 1, f"Multiple residues found for {res_id} in {protein}"
+        except AssertionError as e:
+            print(mask)
+            print(res_id)
+            print(mapping)
+            print(e)
+            continue
+        try:
+            sasa[mask] = res_sasa[idx]
+        except IndexError:
+            print(f"IndexError for {res_id} in {protein}")
+            continue
+        for atom in struct:
+            if atom.res_id == res_id and atom.atom_name == "CA":
+                bfactor[mask] = atom.b_factor
+
+    if all(bfactor == 0):
+        return protein, None, None, None
+    bfactor = np.clip(bfactor, 0.00001, None)
+    bfactor = np.nan_to_num(bfactor, nan=-1)
+
+    sasa = np.clip(sasa, 0.00001, None)
+    sasa = get_relative_sa(protein_seq, sasa)
+    sasa = np.nan_to_num(sasa, nan=-1)
+
+    return protein.replace("_", "-"), sasa.tolist(), bfactor.tolist(), protein_seq
+
+
+# Initialization function to be called once in each worker process
+def init_worker(h5_file_path):
+    global mapping_h5
+    # Open the HDF5 file once for this process
+    mapping_h5 = h5py.File(h5_file_path, "r")
+
+
 def calculate_scores(
-    fasta_file: Fasta, nprocesses: int, mapping_dict: dict, cif_dir: str, upper: bool = True
+    fasta_file: Fasta, nprocesses: int, cif_dir: str, mapping_file ,upper: bool = True
 ) -> tuple[dict, dict]:
     """
     Calculates the SASA and B-factor scores for every protein in the fasta file.
@@ -109,30 +198,23 @@ def calculate_scores(
     bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
     # warnings.filterwarnings("error")
-    with Pool(int(nprocesses)) as pool:
+    with Pool(
+        int(nprocesses), initializer=init_worker, initargs=(mapping_file,)
+    ) as pool:
         results = []
         for record in fasta_file:
-            try:
-                results.append(
-                    pool.apply_async(
-                        calculate_b_sasa_scores,
-                        args=(
-                            record.id,
-                            mapping_dict[record.id.split("_")[0]],
-                            record.seq,
-                            cif_dir,
-                        ),
-                    )
+            results.append(
+                pool.apply_async(
+                    calculate_b_sasa_scores,
+                    args=(
+                        record.id,
+                        record.seq,
+                        cif_dir,
+                    ),
                 )
-            except KeyError:
-                print(f"Could not find mapping for {record.id}")
-                continue
-        """results = [pool.apply_async(calculate_b_sasa_scores, 
-                                    args=(record.id, 
-                                          mapping_dict[record.id.split('_')[0]],
-                                          record.seq)) 
-                                          for record in fasta_file]"""
-        print(results)
+            )
+
+        # Collect results
         results = [r.get() for r in tqdm(results)]
     sasa_scores = {
         protein: [sasa_scores]
@@ -183,7 +265,6 @@ def main(args: Optional[list] = None):
     pdb_path = args.pdb_path
     mapping_file = args.mapping_file
     output_path = args.output_path
-    mapping_dict = json.load(open(mapping_file))
     # mapping_fasta = Fasta(mapping_file)
     upper = args.upper
 
@@ -191,11 +272,9 @@ def main(args: Optional[list] = None):
         fasta = SeqIO.parse(fasta_path, "fasta")
         # fasta = Fasta(fasta_path)
         
-        
         sasa_scores, bfactor_scores, seqs = calculate_scores(
-            fasta, args.n_processes, mapping_dict, pdb_path, upper
+            fasta, args.n_processes, pdb_path, mapping_file, upper
         )
-        
         
         with open(f"{output_path}/pdb_all_bfactor.tsv", "w") as bf, open(
             f"{output_path}/pdb_all_sasa.tsv", "w"

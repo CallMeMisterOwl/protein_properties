@@ -51,7 +51,7 @@ query {
 }
 """
 URL_PDB = "https://data.rcsb.org/graphql"
-HOA_TIEN = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "X": 180,"Y": 255, "V": 165, "U": 148, "O": 230}
+HOA_TIEN = {'undefined': -1, "A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "X": 180,"Y": 255, "V": 165, "U": 148, "O": 230}
 TO_RSA = np.vectorize(HOA_TIEN.get)
 SUBSTITUTION_DICT = {"CYG": "C", "TRN": "W", "IAS": "D", "CSD": "C", "CSO": "C", "TRO": "W", "CSS": "C", "SEP": "S", "DDZ": "A", 
                      "PCA": "E", "CGU": "E", "OCS": "C", "TYI": "Y", "LLP": "K", "CXM": "M", "KCX": "K", "AYA": "A", "TRW": "W", 
@@ -260,13 +260,15 @@ def get_auth_to_label_asym_mapping(cif_file):
     return mapping
 
 def get_relative_sa(seq, sasa):
+    seq = np.array(list(seq))
     try:
-        hoa = TO_RSA(np.array(list(seq)))
+        hoa = TO_RSA(seq)
     except TypeError:
         print(
             f"No max SA value for the residue {set(list(seq)).difference(HOA_TIEN.keys())}"
         )
-        raise
+        seq[seq == None] = "undefined"
+        hoa = TO_RSA(seq)
     return sasa / hoa
 
 def get_pdb_structure(protein, cif_dir):
@@ -311,64 +313,3 @@ def get_pdb_structure(protein, cif_dir):
             return None, None 
     return struct, cif
 
-def calculate_b_sasa_scores(
-    protein, mapping, protein_seq, cif_dir):
-    cif_header, chain_id = protein.split("_")
-    struct, cif = get_pdb_structure(protein, cif_dir)
-    if struct is None or struct.coord.size == 0:
-        return protein, None, None, None
-    # well this is a mess, the mappings were created using sifts which uses the label_asym_id, but the structure uses the auth_asym_id
-    asym_mappping = get_auth_to_label_asym_mapping(cif)
-    try:
-        mapping = {v: k for k, v in mapping[asym_mappping[chain_id]].items()}
-    except KeyError:
-        return protein, None, None, None
-    
-
-    chain_starts = biostruc.get_chain_starts(struct).tolist()
-    chain_ids = biostruc.get_chains(struct).tolist()
-    try:
-        assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
-    except AssertionError as e:
-        print(e)
-        return protein, None, None, None
-    if (
-        biostruc.get_chain_count(struct) == 1
-        or chain_starts[chain_ids.index(chain_id)] == chain_starts[-1]
-    ):
-        struct = struct[chain_starts[chain_ids.index(chain_id)] :]
-    else:
-        struct = struct[
-            chain_starts[chain_ids.index(chain_id)] : chain_starts[
-                chain_ids.index(chain_id) + 1
-            ]
-        ]
-
-    struct = struct[biostruc.filter_amino_acids(struct)]
-    sasa = np.full(len(protein_seq), np.nan)
-    bfactor = np.full(len(protein_seq), np.nan)
-    
-    try:
-        atom_sasa = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
-    except ValueError:
-        return protein, None, None, None
-    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
-    
-    for idx, res_id in enumerate(biostruc.get_residues(struct)[0]):
-        if res_id not in mapping:
-            continue
-        sasa[int(mapping[res_id])] = res_sasa[idx]
-        for atom in struct:
-            if atom.res_id == res_id and atom.atom_name == "CA":
-                bfactor[int(mapping[res_id])] = atom.b_factor
-    
-    if all(bfactor == 0):
-        return protein, None, None, None
-    bfactor = np.clip(bfactor, 0.00001, None)
-    bfactor = np.nan_to_num(bfactor, nan=-1)
-
-    sasa = np.clip(sasa, 0.00001, None)
-    sasa = get_relative_sa(protein_seq, sasa)
-    sasa = np.nan_to_num(sasa, nan=-1)
-
-    return protein.replace("_", "-"), sasa.tolist(), bfactor.tolist(), protein_seq
