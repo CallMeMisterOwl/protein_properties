@@ -145,15 +145,10 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir):
         try:
             assert sum(mask) <= 1, f"Multiple residues found for {res_id} in {protein}"
         except AssertionError as e:
-            print(mask)
-            print(res_id)
-            print(mapping)
-            print(e)
             continue
         try:
             sasa[mask] = res_sasa[idx]
         except IndexError:
-            print(f"IndexError for {res_id} in {protein}")
             continue
         for atom in struct:
             if atom.res_id == res_id and atom.atom_name == "CA":
