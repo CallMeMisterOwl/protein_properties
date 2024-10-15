@@ -15,7 +15,7 @@ scikit-learn = "^1.2.2"
 h5py = "^3.8.0"
 jupyter = "^1.0.0"
 seaborn = "^0.12.2"
-biotite = "^0.36.1"
+biotite = "1.0"
 biopython = "^1.81"
 tensorboard = "^2.13.0"
 jupyterlab = "^4.0.2"
@@ -27,6 +27,9 @@ captum = "^0.6.0"
 statsmodels = "^0.14.0"
 rcsbsearchapi = "^1.6.0"
 pdbecif = "^1.5"
+tensorflow = "^2.17.0"
+polars = "^1.6.0"
+imbalanced-learn = "^0.12.3"
 
 
 [build-system]
