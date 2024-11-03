@@ -1,10 +1,13 @@
-output_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
+output_path: results/glyco/baseline
 HP: True
 model:
   class_path: src.models.GlycoModel
   init_args:
     num_classes: 2
     lr: 1e-3
+    num_layers: 2
+    input_dim: 2304
+    num_hidden: [64]
 
 
 data:
@@ -12,13 +15,18 @@ data:
   init_args:
     config:
       classes: {"T": 0, "N": 1}
-      data_dir: /mnt/project/hasler/protein_properties/data/glyco
-      embedding_path: /mnt/project/hasler/protein_properties/data/glyco/glyco_embeddings.h5
-      np_path: /mnt/project/hasler/protein_properties/data/glyco/np/neg_diff_class
+      data_dir: data/glyco
+      embedding_path: data/glyco/glyco_embeddings.h5
+      esm_embedding_path: data/glyco/glyco_esm_embeddings.h5
+      np_path: data/glyco/N/np
       num_workers: 8
       batch_size: 64
-      add_neg_sites: False
-      use_neg_diff: True
+      add_esm: True
+      add_vespag: False
+      neg_sample_ratio: 1.0
+      pos_sample_ratio: 1.5
+      add_neg_op_sites: False
+      
       
   
       
@@ -46,4 +54,4 @@ trainer:
         logging_interval: step
     - class_path: src.callbacks.LogPredictionCallback
       init_args:
-        out_path: /mnt/project/hasler/protein_properties/results/glyco/baseline
+        out_path: results/glyco/baseline
