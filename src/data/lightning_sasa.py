@@ -15,7 +15,6 @@ from .fasta import Fasta
 # I love copilot <3
 # substituted O for K
 # substituted U for C
-hoa_tien = {"A": 121, "R": 265, "N": 187, "D": 187, "C": 148, "E": 214, "Q": 214, "G": 97, "H": 216, "I": 195, "L": 191, "K": 230, "M": 203, "F": 228, "P": 154, "S": 143, "T": 163, "W": 264, "X": 180,"Y": 255, "V": 165, "U": 148, "O": 230}
 
 @dataclass
 class SASADataConfig:

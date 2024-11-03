@@ -652,6 +652,7 @@ class GlycoModel(pl.LightningModule):
                  weight_decay: float = 0.0,
                  num_classes: int = 3,
                  num_layers: int = 1,
+                 input_dim: int = 1024,
                  **kwargs):
         super().__init__()
         self.num_classes = num_classes
@@ -660,12 +661,12 @@ class GlycoModel(pl.LightningModule):
         self.weight_decay = weight_decay
         self.loss_fn = None
         if num_layers == 1:
-            self.model = nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1)
+            self.model = nn.Linear(input_dim, self.num_classes if self.num_classes > 2 else 1)
         else:
             num_hidden = kwargs.get("num_hidden", [54])
             dropout = kwargs.get("dropout", 0.5)
             self.model = nn.Sequential(
-                nn.Linear(1024, num_hidden[0]),
+                nn.Linear(input_dim, num_hidden[0]),
                 nn.LeakyReLU(),
                 nn.Dropout(dropout),
                 *[nn.Sequential(
@@ -755,7 +756,17 @@ class GlycoModel(pl.LightningModule):
             return y_hat.cpu().numpy().squeeze(0), y.cpu().numpy().squeeze(0)
         
         return y_hat.cpu().numpy(), y.cpu().numpy()
-
+    
+    def predict_step(self, batch, batch_idx):
+        x, y, _ = batch
+        if x.shape[1] == 1:
+            x = x.squeeze(0)
+        y = y.squeeze()
+        y_hat = self(x).squeeze()        
+        loss = self._loss(y_hat, y)
+        y_hat = y_hat > 0.5 if self.num_classes == 2 else y_hat.argmax(dim=1)
+        return y_hat.cpu().item()
+    
     def on_test_epoch_end(self):
         y_hat = torch.cat(self.test_preds, dim=0)
         y = torch.cat(self.test_ys, dim=0)

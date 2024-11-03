@@ -93,6 +93,7 @@ class BFactorDataset(Dataset):
             print("Creating numpy arrays...")
 
         fasta = Fasta(self.data_dir / f"{self.split}_norm.o")
+        label_df = pd.read_csv(self.data_dir / f"{self.split}.tsv", sep="\t")
         embeddings = h5py.File(self.embedding_path, 'r')
         X = []
         y = []
@@ -239,5 +240,8 @@ class BFactorDataModule(pl.LightningDataModule):
 
     def blind_test_dataloader(self):
         raise NotImplementedError("Blind test set not implemented yet!")
-        
+    
+
+
+
     

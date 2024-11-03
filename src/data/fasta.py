@@ -79,7 +79,7 @@ class Fasta:
         else:
             return None
 
-    def getsequences(self, headers: list) -> Optional[list]:
+    def get_sequences(self, headers: list) -> Optional[list]:
         """
         Returns the sequences of a given list of headers.
         :param headers: list
@@ -100,7 +100,7 @@ class Fasta:
         """
         return list(self.sequences.keys())
 
-    def get_number_ofsequences_per_header(self) -> int:
+    def get_number_of_sequences_per_header(self) -> int:
         """
         Returns the number of sequences per header i.e. how many lines per header exist.
         :return: int

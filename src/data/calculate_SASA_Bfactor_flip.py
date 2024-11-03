@@ -95,16 +95,19 @@ def debug_calculate_scores_for_protein(
 
 
 
-def calculate_b_sasa_scores(protein, protein_seq, cif_dir):
+def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
     global mapping_h5
-    cif_header, chain_id = protein.split("_")
-    struct, cif = get_pdb_structure(protein, cif_dir)
+    cif_header, chain_id = protein.split(split_symbol)
+    struct, cif = get_pdb_structure(protein, cif_dir, split_symbol)
     if struct is None or struct.coord.size == 0:
         return protein, None, None, None
 
     # well this is a mess, the mappings were created using sifts which uses the label_asym_id, but the structure uses the auth_asym_id
     asym_mappping = get_auth_to_label_asym_mapping(cif)
-    mapping = mapping_h5[cif_header][asym_mappping[chain_id]]["mapping"][()]
+    try:
+        mapping = mapping_h5[cif_header][asym_mappping[chain_id]]["mapping"][()]
+    except KeyError:
+        return protein, None, None, None
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
     try:
@@ -129,8 +132,10 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir):
     bfactor = np.full(len(protein_seq), np.nan)
 
     try:
-        atom_sasa = biostruc.sasa(struct, vdw_radii="Single", point_number=500)
+        atom_sasa = biostruc.sasa(struct, vdw_radii="ProtOr", point_number=500)
     except ValueError:
+        return protein, None, None, None
+    except KeyError:
         return protein, None, None, None
     res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
     
@@ -193,6 +198,12 @@ def calculate_scores(
     bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
     # warnings.filterwarnings("error")
+    record = next(fasta_file)
+    
+    if '-' in record.id:
+        split_symbol = '-'
+    else:
+        split_symbol = '_' 
     with Pool(
         int(nprocesses), initializer=init_worker, initargs=(mapping_file,)
     ) as pool:
@@ -205,6 +216,7 @@ def calculate_scores(
                         record.id,
                         record.seq,
                         cif_dir,
+                        split_symbol,
                     ),
                 )
             )
@@ -250,7 +262,7 @@ def main(args: Optional[list] = None):
     parser.add_argument(
         "-u", "--upper", action="store_true", help="Use uppercase protein names"
     )
-
+    
     # Parse arguments
     if args is None:
         args = parser.parse_args()
@@ -264,6 +276,7 @@ def main(args: Optional[list] = None):
     upper = args.upper
 
     for fasta_path in fasta_files:
+        fasta_path = Path(fasta_path)
         fasta = SeqIO.parse(fasta_path, "fasta")
         # fasta = Fasta(fasta_path)
         
@@ -271,8 +284,8 @@ def main(args: Optional[list] = None):
             fasta, args.n_processes, pdb_path, mapping_file, upper
         )
         
-        with open(f"{output_path}/pdb_all_bfactor.tsv", "w") as bf, open(
-            f"{output_path}/pdb_all_sasa.tsv", "w"
+        with open(f"{output_path}/{fasta_path.stem}_bfactor.tsv", "w") as bf, open(
+            f"{output_path}/{fasta_path.stem}_sasa.tsv", "w"
         ) as sasa:
             bf.write("Protein\tPosition\tAA\tnorm_Bfactor\n")
             sasa.write("Protein\tPosition\tAA\tRSA\n")

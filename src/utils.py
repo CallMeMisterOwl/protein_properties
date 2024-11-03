@@ -268,11 +268,17 @@ def get_relative_sa(seq, sasa):
             f"No max SA value for the residue {set(list(seq)).difference(HOA_TIEN.keys())}"
         )
         seq[seq == None] = "undefined"
-        hoa = TO_RSA(seq)
+        try:
+            hoa = TO_RSA(seq)
+        except TypeError:
+            print(
+                f"No max SA value for the residue {set(list(seq)).difference(HOA_TIEN.keys())}"
+            )
+            return None
     return sasa / hoa
 
-def get_pdb_structure(protein, cif_dir):
-    cif_header, chain_id = protein.split("_")
+def get_pdb_structure(protein, cif_dir, split_symbol="_"):
+    cif_header, chain_id = protein.split(split_symbol)
     cif = None
     if cif_dir is not None:
         cif_dir = Path(cif_dir)
@@ -286,9 +292,6 @@ def get_pdb_structure(protein, cif_dir):
     if cif is None:
         try:
             cif = PDB.PDBList().retrieve_pdb_file(cif_header, pdir=gettempdir(), file_format='mmCif')
-        except FileNotFoundError:
-            print(f'Could not find PDB file for {protein}\nFetching from RCSB...')
-            return None, None
         except Exception as e:
             print(f"Could not fetch PDB file for {protein}\n{e}")
             return None, None
@@ -311,5 +314,8 @@ def get_pdb_structure(protein, cif_dir):
         except ValueError:
             print(f"Skipping protein {protein}...\nCould not parse structure")
             return None, None 
+        except FileNotFoundError:
+            print(f"Skipping protein {protein}...\nCould not find CIF file")
+            return None, None
     return struct, cif
 

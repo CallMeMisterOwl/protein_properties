@@ -196,9 +196,12 @@ class GlycoDataModule(pl.LightningDataModule):
             return
         self.prepare_data()
 
-        og_train_dataset = GlycoDataset("train", self.config, 42, False)
+         
+        train_dataset = GlycoDataset("train", self.config, 42, True)
+        val_dataset = GlycoDataset("val", self.config, 42, True)
+        #og_train_dataset = GlycoDataset("train", self.config, 42, False)
         # split the train dataset into train and val
-        labels = []
+        '''labels = []
         for l, a in zip(og_train_dataset.y, og_train_dataset.AAs):
             labels.append(l if a == "N" and l == 0 else 3)
         train_idx, val_idx = next(
@@ -207,7 +210,7 @@ class GlycoDataModule(pl.LightningDataModule):
             )
         )
         self.train_dataset = Subset(og_train_dataset, train_idx)
-        self.val_dataset = Subset(og_train_dataset, val_idx)
+        self.val_dataset = Subset(og_train_dataset, val_idx)'''
 
         # self.val_dataset = GlycoDataset("val", self.config)
         """self.O_test_dataset = GlycoDataset("O_test", self.config, 370381)
@@ -215,19 +218,26 @@ class GlycoDataModule(pl.LightningDataModule):
         self.test_dataset = ConcatDataset([self.O_test_dataset, self.N_test_dataset])"""
 
         if len(self.config.classes) < 3:
-            og_train_dataset.y = np.array(
+            train_dataset.y = np.array(
                 [
                     arr.astype(np.float16) if arr.dtype != np.float16 else arr
-                    for arr in og_train_dataset.y
+                    for arr in train_dataset.y
+                ]
+            )
+            val_dataset.y = np.array(
+                [
+                    arr.astype(np.float16) if arr.dtype != np.float16 else arr
+                    for arr in val_dataset.y
                 ]
             )
 
 
         # calculate class weights for the loss function
         # ys = np.apply_along_axis(np.concatenate, 0, og_train_dataset.y)
-        counts = np.unique(og_train_dataset.y, return_counts=True)[1]
+        counts = np.unique(train_dataset.y, return_counts=True)[1]
         # this will be used for cross validation 
-        self.og_train_dataset = og_train_dataset
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
         # check if class weights are already calculated
         if len(self.config.classes) < 3:
             # For binary predictions set only positive weight
@@ -245,7 +255,7 @@ class GlycoDataModule(pl.LightningDataModule):
             self.train_dataset,
             num_workers=self.config.num_workers,
             batch_sampler=ImpGroupedBatchSampler(
-                self.train_dataset.dataset.pids[self.train_dataset.indices],
+                self.train_dataset.pids,
                 self.config.batch_size,
             ),
         )
@@ -309,6 +319,7 @@ class GlycoDataset(Dataset):
     def load_data(self):
         if self.split == "blind_test":
             raise NotImplementedError("Blind test set not implemented yet!")
+        
         try:
             self.X = np.load(
                 str(
@@ -336,13 +347,14 @@ class GlycoDataset(Dataset):
             print("Creating numpy arrays...")
 
         ros = RandomUnderSampler(random_state=self.seed)
-        
-        df = pd.read_csv(self.data_dir / f"{self.split}_rr_df.csv")
-        if self.num_classes < 3:
-            df = df[df["label"].isin(self.config.classes.values())]
-            df["label"] = df["label"].apply(lambda x: 1 if x >= 1 else 0)
+        prefix = 'N' if 'N' in self.config.classes else 'O'
+        prefix = prefix if self.num_classes < 3 else ''
+        df = pd.read_csv(self.data_dir /f'{prefix}'/ f"{prefix}_{self.split}_RR.csv" if prefix != '' else self.data_dir / 'combined' /f"{self.split}_RR.csv")
+        if self.num_classes < 3 and self.split == "train":
+            #df = df[df["label"].isin(self.config.classes.values())]
+            #df["label"] = df["label"].apply(lambda x: 1 if x >= 1 else 0)
             if not self.config.add_neg_op_sites:
-                df = df[df["AA"] == "N"] if 'N' in self.config.classes else df[(df["AA"] == "S") | (df["AA"] == "T")]
+                #df = df[df["AA"] == "N"] if 'N' in self.config.classes else df[(df["AA"] == "S") | (df["AA"] == "T")]
                 sampling_strat = {
                     0: int(df["label"].value_counts()[1] * self.neg_sample_ratio),
                     1: int(df["label"].value_counts()[1]),
@@ -353,16 +365,6 @@ class GlycoDataset(Dataset):
                 } 
                 labels = df["label"].values 
                 
-            else:
-                sampling_strat = {0: int(df["label"].value_counts()[1] / self.neg_sample_ratio), 
-                                                                                1: int(df["label"].value_counts()[1]), 
-                                                                                3: int(df["label"].value_counts()[1] / self.neg_sample_ratio)}
-                
-                
-                labels = [
-                3 if a == "N" and l == 0 else l
-                for l, a in zip(df["label"].values, df["AA"].values)
-                ]
             ros = RandomUnderSampler(random_state=self.seed, 
                                     sampling_strategy=sampling_strat)
             over_samp = RandomOverSampler(random_state=self.seed, 
@@ -370,12 +372,13 @@ class GlycoDataset(Dataset):
             df, labels = ros.fit_resample(df, labels)
             df, _ = over_samp.fit_resample(df, labels)
         # undersample for O and N seperately
-        else:
+        elif self.split == "train":
             O_df = df.loc[(df["AA"] == "S") | (df["AA"] == "T")]
             N_df = df[df["AA"] == "N"]
             O_df, _ = ros.fit_resample(O_df, O_df["label"])
             N_df, _ = ros.fit_resample(N_df, N_df["label"])
             df = pd.concat([O_df, N_df])
+
             
         y = df["label"].values
         pids = df["PID"].values
@@ -443,6 +446,18 @@ class GlycoDataset(Dataset):
         self.y = np.array(y)
         self.pids = np.array(pids)
         self.AAs = np.array(AAs)
+        
+        if self.numpy:
+            np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"),
+                    self.X
+            )
+            np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"),
+                    self.y
+            )
+            np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}_{'_'.join(self.config.classes.keys())}.npy"),
+                    self.pids
+            )
+        
 
     def __len__(self):
         return len(self.X)

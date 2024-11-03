@@ -26,10 +26,11 @@ def main():
 
     cli.trainer.logger = WandbLogger(project="protein_properties", log_model=True)
     cli.model.class_weights = cli.datamodule.class_weights
+    
     #kaiming_init(cli.model)
     cli.trainer.fit(model=cli.model, datamodule=cli.datamodule)
     # get validation scores for the best model
-    cli.trainer.validate(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())
+    
     if not cli.config.HP:
         cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
     else:
