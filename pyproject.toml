@@ -10,7 +10,7 @@ packages = [{include = "protein_properties"}]
 python = "^3.10"
 numpy = "^1.24.3"
 pandas = "^2.0.1"
-wandb = "^0.15.2"
+wandb = "0.18.5"
 scikit-learn = "^1.2.2"
 h5py = "^3.8.0"
 jupyter = "^1.0.0"

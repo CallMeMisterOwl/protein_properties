@@ -153,3 +153,4 @@ profile_out.txt
 pdb_seqres.txt.gz
 data/*
 rr/*
+tb_logs/*
