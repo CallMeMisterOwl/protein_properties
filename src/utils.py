@@ -291,7 +291,7 @@ def get_pdb_structure(protein, cif_dir, split_symbol="_"):
             
     if cif is None:
         try:
-            cif = PDB.PDBList().retrieve_pdb_file(cif_header, pdir=gettempdir(), file_format='mmCif')
+            cif = PDB.PDBList().retrieve_pdb_file(cif_header.upper(), pdir=gettempdir(), file_format='mmCif')
         except Exception as e:
             print(f"Could not fetch PDB file for {protein}\n{e}")
             return None, None

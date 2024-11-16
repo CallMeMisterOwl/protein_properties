@@ -17,9 +17,10 @@ class BFactorDataConfig:
     """
     Data configuration for Bfactor dataset
     """
-    data_dir: str = '../../data'
-    embedding_path: str = '../../data/embeddings_sasa_bfactor.h5'
-    np_path: str = '../../data/np'
+    data_dir: str = '../../data/e_prsa/bfactor'
+    embedding_path: str = '../../data/e_prsa/prott5_sasa_bfactor.h5'
+    esm_embedding_path: str = '../../data//e_prsa/esm_sasa_bfactor.h5'
+    np_path: str = '../../data/e_prsa/bfactor/np'
     num_classes: Literal[1,2,3,10] = 1
     num_workers: int = 4
 
@@ -72,6 +73,7 @@ class BFactorDataset(Dataset):
         self.split = split
         self.data_dir = Path(config.data_dir)
         self.embedding_path = config.embedding_path
+        self.esm_embedding_path = config.esm_embedding_path
         self.np_path = Path(config.np_path)
         self.num_classes = config.num_classes
 
@@ -92,25 +94,42 @@ class BFactorDataset(Dataset):
         except:
             print("Creating numpy arrays...")
 
-        fasta = Fasta(self.data_dir / f"{self.split}_norm.o")
         label_df = pd.read_csv(self.data_dir / f"{self.split}.tsv", sep="\t")
-        embeddings = h5py.File(self.embedding_path, 'r')
+        
         X = []
         y = []
         pids = []
-        for pid, seqs in tqdm(fasta.items()):
+        for pid in tqdm(set(label_df['PID'])):
             # masking the 0.0 values, so I can remove them later before calculating the loss
-            bfactor = np.array(seqs[1])
-            bfactor = np.where(bfactor == 0.0, -1, bfactor)
+            bfactor = label_df[label_df['PID'] == pid]['norm_Bfactor'].values
+            
             y.append(bfactor.astype(np.float32))
-
-            # vespa replaces "-" with "_" in the ids -.-
-            e = embeddings[pid.replace("-", "_") if "-" in pid else pid][()]
-            assert len(e) == len(bfactor), f"Length of embedding and RSA is not equal for {pid}"
-            X.append(e)
+            embedding = None
+            with h5py.File(self.embedding_path, "r") as embeddings:
+                try:
+                    embedding = embeddings[pid][()][pos - 1]
+                except KeyError:
+                    print(f"Protein {pid} not found in ProtT5 embeddings!")
+                    continue
+                except IndexError:
+                    print(f"Position {pos} not found in protein {pid}!")
+                    continue
+            
+            with h5py.File(self.esm_embedding_path, "r") as esm_embeddings:
+                
+                try:
+                    embedding = np.concatenate([embedding, esm_embeddings[pid.replace("_", "-")][()][pos - 1]])
+                except KeyError:
+                    print(f"Protein {pid} not found in ESM embeddings!")
+                    continue
+                except IndexError:
+                    print(f"Position {pos} not found in protein {pid}!")
+                    continue
+            
+            assert len(embedding) == len(bfactor), f"Length of embedding and RSA is not equal for {pid}"
+            X.append(embedding)
             pids.append(pid)
-
-        
+           
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
         self.pids = np.array(pids, dtype=object)
@@ -149,22 +168,9 @@ class BFactorDataModule(pl.LightningDataModule):
         if not self.data_dir.exists():
             raise FileNotFoundError("The data directory that was provided does not exist! Please download the data first!")
         
-        if not (self.data_dir / "train.o").exists() or not (self.data_dir / "blind_test.o").exists() or not (self.data_dir / "test.o").exists():
-            raise FileNotFoundError("The data directory that was provided is missing the .o files! Please download the data first!")
+        if not (self.data_dir / "train.tsv").exists():
+            raise FileNotFoundError("The data directory that was provided is missing the tsv files! Please download the data first!")
         
-        if (self.data_dir / "val.o").exists():
-            print("Data preparation already done!")
-            return
-        
-        print("Preparing data...")
-        # Splitting the data into train, val and test set
-        fasta = Fasta(self.data_dir / "train.o")
-        train, val = train_test_split(fasta.get_headers(), test_size=0.1, random_state=13, shuffle=True)
-        filterByKey = lambda keys: {x: fasta[x] for x in keys}
-        train_dict = filterByKey(train)
-        val_dict = filterByKey(val)
-        Fasta(sequences=train_dict).write_fasta(self.data_dir / "train.o", overwrite=True)
-        Fasta(sequences=val_dict).write_fasta(self.data_dir / "val.o", overwrite=True)
         print("Data preparation done!")
         
 
@@ -173,28 +179,8 @@ class BFactorDataModule(pl.LightningDataModule):
         
         self.train_dataset = BFactorDataset("train", self.config)
         self.val_dataset = BFactorDataset("val", self.config)
-        self.test_dataset = BFactorDataset("test", self.config)
-
-        # Shuffel train data #reproducibility #science
-        
-        # Create an array of indices that correspond to the order of IDs in 'b'
-        if not (self.np_path / f"shuffle_{self.config.num_classes}.npy").exists():
-            self.shuffled_ids = np.random.permutation(self.train_dataset.pids)
-            np.save(self.np_path / f"shuffle_{self.config.num_classes}.npy", self.shuffled_ids)
-        else:
-            self.shuffled_ids = np.load(self.np_path / f"shuffle_{self.config.num_classes}.npy", allow_pickle=True)
-
-        index_mapping = {id: index for index, id in enumerate(self.shuffled_ids)}
-        sorted_indices = np.zeros(len(self.shuffled_ids), dtype=int)
-        for items in index_mapping.items():
-            sorted_indices[items[1]] = np.where(items[0] == self.train_dataset.pids)[0][0]
-        
-        self.train_dataset.X = self.train_dataset.X[sorted_indices]
-        self.train_dataset.y = self.train_dataset.y[sorted_indices]
-        self.train_dataset.pids = self.shuffled_ids
 
         if self.config.num_classes < 3:
-            
             self.train_dataset.y = np.array([arr.astype(np.float16) 
                                              if arr.dtype != np.float16 
                                              else arr 
@@ -203,43 +189,11 @@ class BFactorDataModule(pl.LightningDataModule):
                                            if arr.dtype != np.float16
                                            else arr
                                            for arr in self.val_dataset.y], dtype=object)
-            self.test_dataset.y = np.array([arr.astype(np.float16)
-                                            if arr.dtype != np.float16
-                                            else arr
-                                            for arr in self.test_dataset.y], dtype=object)
-            
-        if self.config.num_classes == 1:
-            return
-        if (self.np_path / f"class_weights_c{self.config.num_classes}.pt").exists():
-            self.class_weights = torch.load(self.np_path / f"class_weights_c{self.config.num_classes}.pt")
-            return
-        
-        # calculate class weights for the loss function
-        ys = np.concatenate((np.apply_along_axis(np.concatenate, 0, self.train_dataset.y),
-                             np.apply_along_axis(np.concatenate, 0, self.val_dataset.y),
-                             np.apply_along_axis(np.concatenate, 0, self.test_dataset.y)), axis=0)
-        counts = np.unique(ys, return_counts=True)[1]
-        # check if class weights are already calculated
-
-        if self.config.num_classes < 3:
-            # For binary predictions set only positive weight
-            self.class_weights = torch.tensor([counts[0] / counts[1]], dtype=torch.float16)
-        else:
-            self.class_weights = torch.tensor([max(counts) / counts[i] for i in range(self.config.num_classes)], dtype=torch.float32)
-        torch.save(self.class_weights, self.np_path / f"class_weights_c{self.config.num_classes}.pt")
-
-        
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
-
-    def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
-
-    def blind_test_dataloader(self):
-        raise NotImplementedError("Blind test set not implemented yet!")
     
 
 

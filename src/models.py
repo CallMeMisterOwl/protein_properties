@@ -14,6 +14,7 @@ class BFactorBaseline(pl.LightningModule):
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
+                 input_features: int = 1024,
                  **kwargs):
         super().__init__()
         self.num_classes = num_classes
@@ -22,7 +23,7 @@ class BFactorBaseline(pl.LightningModule):
         self.weight_decay = weight_decay
         self.loss_fn = None
         self.model = nn.Sequential(
-            nn.Linear(1024, self.num_classes if self.num_classes > 2 else 1),
+            nn.Linear(input_features, self.num_classes if self.num_classes > 2 else 1),
         )
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
@@ -240,6 +241,7 @@ class SASALSTM(pl.LightningModule):
                  hidden: int = 20,
                  num_layers: int = 1,
                  dropout: float = 0.0,
+                 input_features: int = 1024,
                  **kwargs):
         super().__init__()
         self.num_classes = num_classes
@@ -252,7 +254,7 @@ class SASALSTM(pl.LightningModule):
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
         
-        self.lstm_layer = nn.LSTM(input_size=1024,
+        self.lstm_layer = nn.LSTM(input_size=input_features,
                                hidden_size=hidden,
                                bidirectional=True,
                                num_layers=num_layers,
@@ -275,7 +277,7 @@ class SASALSTM(pl.LightningModule):
         lstm_h, (_, _) = self.lstm_layer(x)
         lstm_h = self.dropout(lstm_h)
         # applies the linear layer to every LSTM time step
-        return torch.stack([self.out(pre) for pre in lstm_h])#, torch.stack([self.uncertainty(pre) for pre in lstm_h])
+        return torch.stack([self.out(pre) for pre in lstm_h])
 
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -365,6 +367,7 @@ class SASACNN(pl.LightningModule):
                  size_lin_layers: list = [256, 152],
                  dropout: float = 0.5,
                  dilation: int = 1,
+                 input_features: int = 1024,
                  **kwargs):
         super().__init__()
         assert num_lin_layers == len(size_lin_layers)
@@ -378,18 +381,18 @@ class SASACNN(pl.LightningModule):
         self.output_path = kwargs.get("output_path", ".")
         
         self.cnn = nn.Conv1d(
-            1024,
-            1024,
+            input_features,
+            input_features,
             wing * 2 + 1,
             padding=wing * dilation,
-            groups=1024,
+            groups=input_features,
             dilation=dilation
         )
         # create linear layers the first one has to have 1024 input features and the last one has to have num_classes output features
         # subsequent layers are defined by size_lin_layers
         # add relu and dropout after each layer
         self.linear_layers = nn.Sequential(
-            nn.Linear(1024, size_lin_layers[0]),
+            nn.Linear(input_features, size_lin_layers[0]),
             nn.ReLU(),
             nn.Dropout(dropout),
             *[nn.Sequential(
@@ -648,7 +651,7 @@ class SASADummyModel(pl.LightningModule):
 class GlycoModel(pl.LightningModule):
     def __init__(self,
                  class_weights: torch.Tensor = None,
-                 lr: float = 1e-3,
+                 lr: float = 1e-4,
                  weight_decay: float = 0.0,
                  num_classes: int = 3,
                  num_layers: int = 1,
@@ -765,7 +768,7 @@ class GlycoModel(pl.LightningModule):
         y_hat = self(x).squeeze()        
         loss = self._loss(y_hat, y)
         y_hat = y_hat > 0.5 if self.num_classes == 2 else y_hat.argmax(dim=1)
-        return y_hat.cpu().item()
+        return y_hat.cpu().item(), loss.cpu().item()
     
     def on_test_epoch_end(self):
         y_hat = torch.cat(self.test_preds, dim=0)

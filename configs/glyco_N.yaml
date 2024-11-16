@@ -7,7 +7,7 @@ model:
     lr: 1e-3
     num_layers: 2
     input_dim: 2304
-    num_hidden: [64]
+    num_hidden: [84]
 
 
 data:
@@ -20,7 +20,7 @@ data:
       esm_embedding_path: data/glyco/glyco_esm_embeddings.h5
       np_path: data/glyco/N/np
       num_workers: 8
-      batch_size: 64
+      batch_size: 128
       add_esm: True
       add_vespag: False
       neg_sample_ratio: 1.0

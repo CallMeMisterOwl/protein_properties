@@ -20,6 +20,7 @@ from Bio import SeqIO
 from Bio.PDB import MMCIFParser
 from biotite.sequence import AlphabetError, ProteinSequence
 from biotite.structure.io.pdbx import CIFFile, get_sequence, get_structure
+import biotite.database.rcsb as rcsb
 from tqdm import tqdm
 
 from src.data.fasta import Fasta
@@ -93,8 +94,6 @@ def debug_calculate_scores_for_protein(
     return sasa_scores, bfactor_scores, protein_seq
 
 
-
-
 def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
     global mapping_h5
     cif_header, chain_id = protein.split(split_symbol)
@@ -105,9 +104,11 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
     # well this is a mess, the mappings were created using sifts which uses the label_asym_id, but the structure uses the auth_asym_id
     asym_mappping = get_auth_to_label_asym_mapping(cif)
     try:
-        mapping = mapping_h5[cif_header][asym_mappping[chain_id]]["mapping"][()]
+        uniprot = mapping_h5[cif_header][asym_mappping[chain_id]]["uniprot"][()]
+        pdb = mapping_h5[cif_header][asym_mappping[chain_id]]["pdb"][()]
     except KeyError:
         return protein, None, None, None
+    mapping = {k: v for k, v in zip(pdb, uniprot)}
     chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
     try:
@@ -142,6 +143,7 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
     #res_ids = biostruc.get_residues(struct)[0]
     
     # TODO make this pretty and efficient
+    # TODO revert to using a dict for mapping
     mapping = np.array(mapping)
     for idx, res_id in enumerate(biostruc.get_residues(struct)[0]):
         if res_id not in mapping or res_id == -1:
@@ -162,6 +164,8 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
     if all(bfactor == 0):
         return protein, None, None, None
     bfactor = np.clip(bfactor, 0.00001, None)
+    # normalize B-factor
+    bfactor = (bfactor - np.nanmean(bfactor)) / np.nanstd(bfactor)
     bfactor = np.nan_to_num(bfactor, nan=-1)
 
     sasa = np.clip(sasa, 0.00001, None)
@@ -198,12 +202,17 @@ def calculate_scores(
     bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
     # warnings.filterwarnings("error")
-    record = next(fasta_file)
+    # you are beyond stupid if you are reading this 
+    #! record = next(fasta_file) why skip the first record? Are you mental or something?
+    fasta_file = list(fasta_file)
+    record = fasta_file[0]
     
     if '-' in record.id:
         split_symbol = '-'
     else:
         split_symbol = '_' 
+    pids = [record.id.split(split_symbol)[0].upper() for record in fasta_file]
+    rcsb.fetch(pids, "cif", gettempdir())
     with Pool(
         int(nprocesses), initializer=init_worker, initargs=(mapping_file,)
     ) as pool:
@@ -246,6 +255,7 @@ def main(args: Optional[list] = None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-s", "--fasta_files", nargs="+", help="Path(s) to fasta files")
+    
     parser.add_argument(
         "-p", "--pdb_path", required=False, help="Path to PDB structures"
     )
@@ -256,6 +266,7 @@ def main(args: Optional[list] = None):
         help="Path to mapping file, which is required to fill in missing residues",
     )
     parser.add_argument("-o", "--output_path", required=True, help="Output path")
+    
     parser.add_argument(
         "-n", "--n_processes", default=16, help="Number of processes to use", type=int
     )
