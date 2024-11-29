@@ -108,8 +108,14 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
         pdb = mapping_h5[cif_header][asym_mappping[chain_id]]["pdb"][()]
     except KeyError:
         return protein, None, None, None
-    mapping = {k: v for k, v in zip(pdb, uniprot)}
-    chain_starts = biostruc.get_chain_starts(struct).tolist()
+    mapping_mask = pdb != -1
+    #mapping = {k: v for k, v in zip(pdb[mapping_mask], uniprot[mapping_mask])}
+    pdb_filtered = pdb[mapping_mask]
+    uniprot_filtered = uniprot[mapping_mask]
+    mapping = np.full(np.max(pdb_filtered) + 1, -1, dtype=int)
+    mapping[pdb_filtered] = uniprot_filtered
+    
+    '''chain_starts = biostruc.get_chain_starts(struct).tolist()
     chain_ids = biostruc.get_chains(struct).tolist()
     try:
         assert chain_id in chain_ids, f"Chain {chain_id} not found for {protein}"
@@ -126,41 +132,57 @@ def calculate_b_sasa_scores(protein, protein_seq, cif_dir, split_symbol):
             chain_starts[chain_ids.index(chain_id)] : chain_starts[
                 chain_ids.index(chain_id) + 1
             ]
-        ]
+        ]'''
+    chain_starts = biostruc.get_chain_starts(struct).tolist()
+    chain_ids = biostruc.get_chains(struct).tolist()
+    if chain_id not in chain_ids:
+        print(f"Chain {chain_id} not found for {protein}")
+        return protein, None, None, None
 
+    chain_index = chain_ids.index(chain_id)
+    if biostruc.get_chain_count(struct) == 1 or chain_starts[chain_index] == chain_starts[-1]:
+        struct = struct[chain_starts[chain_index]:]
+    else:
+        struct = struct[chain_starts[chain_index]:chain_starts[chain_index + 1]]
     struct = struct[biostruc.filter_amino_acids(struct)]
     sasa = np.full(len(protein_seq), np.nan)
     bfactor = np.full(len(protein_seq), np.nan)
 
     try:
         atom_sasa = biostruc.sasa(struct, vdw_radii="ProtOr", point_number=500)
-    except ValueError:
+    except (ValueError, KeyError):
         return protein, None, None, None
-    except KeyError:
-        return protein, None, None, None
-    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
-    
-    #res_ids = biostruc.get_residues(struct)[0]
-    
-    # TODO make this pretty and efficient
-    # TODO revert to using a dict for mapping
-    mapping = np.array(mapping)
-    for idx, res_id in enumerate(biostruc.get_residues(struct)[0]):
-        if res_id not in mapping or res_id == -1:
-            continue
-        mask = mapping == res_id
-        try:
-            assert sum(mask) <= 1, f"Multiple residues found for {res_id} in {protein}"
-        except AssertionError as e:
-            continue
-        try:
-            sasa[mask] = res_sasa[idx]
-        except IndexError:
-            continue
-        for atom in struct:
-            if atom.res_id == res_id and atom.atom_name == "CA":
-                bfactor[mask] = atom.b_factor
 
+    res_sasa = biostruc.apply_residue_wise(struct, atom_sasa, np.nansum)
+
+    # TODO make this pretty and efficient
+    res_ids = biostruc.get_residues(struct)[0]
+    res_mask = (res_ids != None) & (res_ids < len(mapping))
+    # assert res_ids are positive
+    # got triggered by a negative residue id
+    # assert all(res_ids > 0), f"Negative residue id found for {protein}"
+
+    '''mapping_vec = np.vectorize(mapping.get)  # vectorize the mapping function
+    try:
+        np_mapping = mapping_vec(res_ids[res_mask])
+    except:
+        return protein, None, None, None'''
+    # remove res_ids not in mapping
+    try:
+        np_mapping = mapping[res_ids[res_mask]]
+    except IndexError:
+        print('fuck you')
+    mask = np_mapping != -1
+    if np.any(np_mapping[mask] >= len(sasa)):
+        print(f"Index out of bounds: max index {np.max(np_mapping[mask])}, sasa length {len(sasa)}, protein {protein}")
+        return protein, None,None,None
+    sasa[np_mapping[mask]] = res_sasa[res_mask][mask]
+    for atom in struct:
+        if atom.res_id >= len(mapping):
+            continue
+        if atom.atom_name == "CA" and mapping[atom.res_id] != -1:
+            pos_idx = mapping[atom.res_id]
+            bfactor[pos_idx] = atom.b_factor
     if all(bfactor == 0):
         return protein, None, None, None
     bfactor = np.clip(bfactor, 0.00001, None)
@@ -183,7 +205,7 @@ def init_worker(h5_file_path):
 
 
 def calculate_scores(
-    fasta_file: Fasta, nprocesses: int, cif_dir: str, mapping_file ,upper: bool = True
+    fasta_file: Fasta, nprocesses: int, cif_dir: str, mapping_file, upper: bool = True
 ) -> tuple[dict, dict]:
     """
     Calculates the SASA and B-factor scores for every protein in the fasta file.
@@ -202,16 +224,16 @@ def calculate_scores(
     bfactor_scores (dict):  the B-factor scores for each residue in the protein
     """
     # warnings.filterwarnings("error")
-    # you are beyond stupid if you are reading this 
+    # you are beyond stupid if you are reading this
     #! record = next(fasta_file) why skip the first record? Are you mental or something?
     fasta_file = list(fasta_file)
     record = fasta_file[0]
-    
-    if '-' in record.id:
-        split_symbol = '-'
+
+    if "-" in record.id:
+        split_symbol = "-"
     else:
-        split_symbol = '_' 
-    pids = [record.id.split(split_symbol)[0].upper() for record in fasta_file]
+        split_symbol = "_"
+    pids = [record.id.split(split_symbol)[0] for record in fasta_file]
     rcsb.fetch(pids, "cif", gettempdir())
     with Pool(
         int(nprocesses), initializer=init_worker, initargs=(mapping_file,)
@@ -255,7 +277,7 @@ def main(args: Optional[list] = None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-s", "--fasta_files", nargs="+", help="Path(s) to fasta files")
-    
+
     parser.add_argument(
         "-p", "--pdb_path", required=False, help="Path to PDB structures"
     )
@@ -266,14 +288,14 @@ def main(args: Optional[list] = None):
         help="Path to mapping file, which is required to fill in missing residues",
     )
     parser.add_argument("-o", "--output_path", required=True, help="Output path")
-    
+
     parser.add_argument(
         "-n", "--n_processes", default=16, help="Number of processes to use", type=int
     )
     parser.add_argument(
         "-u", "--upper", action="store_true", help="Use uppercase protein names"
     )
-    
+
     # Parse arguments
     if args is None:
         args = parser.parse_args()
@@ -290,11 +312,11 @@ def main(args: Optional[list] = None):
         fasta_path = Path(fasta_path)
         fasta = SeqIO.parse(fasta_path, "fasta")
         # fasta = Fasta(fasta_path)
-        
+
         sasa_scores, bfactor_scores, seqs = calculate_scores(
             fasta, args.n_processes, pdb_path, mapping_file, upper
         )
-        
+
         with open(f"{output_path}/{fasta_path.stem}_bfactor.tsv", "w") as bf, open(
             f"{output_path}/{fasta_path.stem}_sasa.tsv", "w"
         ) as sasa:
