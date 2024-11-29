@@ -16,6 +16,7 @@ import biotite.structure as biostruc
 import numpy as np
 import pandas as pd
 import requests
+import scipy.stats
 import torch
 from Bio import Entrez, SeqIO
 from Bio.PDB import MMCIFParser
@@ -33,8 +34,6 @@ import argparse
 import multiprocessing as mp
 import os
 from multiprocessing.pool import Pool
-
-
 
 QUERY = """
 query {
@@ -319,3 +318,9 @@ def get_pdb_structure(protein, cif_dir, split_symbol="_"):
             return None, None
     return struct, cif
 
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, h
