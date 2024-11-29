@@ -14,7 +14,7 @@ class BFactorBaseline(pl.LightningModule):
                  class_weights: torch.Tensor = None,
                  lr: float = 1e-3,
                  weight_decay: float = 0.0,
-                 input_features: int = 1024,
+                 input_features: int = 2304,
                  **kwargs):
         super().__init__()
         self.num_classes = num_classes
@@ -28,7 +28,7 @@ class BFactorBaseline(pl.LightningModule):
         self.lr_scheduler = kwargs.get("lr_scheduler", None)
         self.output_path = kwargs.get("output_path", ".")
         if self.num_classes == 1:
-            torch.nn.init.xavier_uniform_(self.model[0].weight)
+            torch.nn.init.kaiming_uniform_(self.model[0].weight)
             self.model[0].bias.data.fill_(0.01)
 
         self.hparams["Modeltype"] = "BfactorBaseline"
@@ -36,7 +36,7 @@ class BFactorBaseline(pl.LightningModule):
         self.save_hyperparameters()
         self.softmax = nn.Softmax(dim=1)
         self.sigmoid = nn.Sigmoid()
-        self.activation = nn.Identity() if self.num_classes != 1 else nn.Sigmoid()
+        self.activation = nn.Identity() 
         
 
     def forward(self, x):
@@ -50,7 +50,7 @@ class BFactorBaseline(pl.LightningModule):
         mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
-        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, batch_size=1)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
         return loss
@@ -358,16 +358,16 @@ class SASALSTM(pl.LightningModule):
 
 class SASACNN(pl.LightningModule):
     def __init__(self, 
-                 num_classes: Literal[1, 2, 3, 10] = 3,
+                 num_classes: Literal[1, 2, 3, 10] = 1,
                  class_weights: torch.Tensor = None,
-                 lr: float = 1e-3,
+                 lr: float = 1e-4,
                  weight_decay: float = 0.0,
                  wing: int = 15,
                  num_lin_layers: int = 2,
-                 size_lin_layers: list = [256, 152],
-                 dropout: float = 0.5,
+                 size_lin_layers: list = [152, 64],
+                 dropout: float = 0.4,
                  dilation: int = 1,
-                 input_features: int = 1024,
+                 input_features: int = 2304,
                  **kwargs):
         super().__init__()
         assert num_lin_layers == len(size_lin_layers)
@@ -393,17 +393,17 @@ class SASACNN(pl.LightningModule):
         # add relu and dropout after each layer
         self.linear_layers = nn.Sequential(
             nn.Linear(input_features, size_lin_layers[0]),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Dropout(dropout),
             *[nn.Sequential(
                 nn.Linear(size_lin_layers[i], size_lin_layers[i+1]),
-                nn.ReLU(),
+                nn.LeakyReLU(),
                 nn.Dropout(dropout)
             ) for i in range(num_lin_layers - 1)],
             nn.Linear(size_lin_layers[-1], num_classes if num_classes > 2 else 1)
         )
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = dropout
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax()
         self.hparams["Modeltype"] = "SASACNN"
@@ -416,7 +416,7 @@ class SASACNN(pl.LightningModule):
         # TODO remove this
         out = self.cnn(x.permute(0, 2, 1))
         #out = nn.ReLU()(out)
-        out = F.dropout(out, p=0.2, training=self.training)
+        
         # applies the linear layer to every CNN step
         return self.linear_layers(out.permute(0, 2, 1))
         
@@ -427,7 +427,11 @@ class SASACNN(pl.LightningModule):
         mask = (y != self.mask_value)
         
         loss = self._loss(y_hat[mask], y[mask])
-        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        if torch.isnan(loss) or torch.isinf(loss):
+            print(f"NaN or Inf loss detected {_[0]}")
+            return
+            
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
         for t in self._accuracy(y_hat[mask], y[mask]):
             self.log(f"train_{t[0]}", t[1], on_epoch=True, on_step=False)
         return loss
@@ -461,7 +465,17 @@ class SASACNN(pl.LightningModule):
         elif self.num_classes > 2:
             # For multiclass predictions don't
             return self.softmax(y_hat[mask].squeeze()).cpu().numpy(), y[mask].cpu().numpy().squeeze()
+    
+    def predict_step(self, batch, batch_idx):
+        x, y, _ = batch
+        y = y.squeeze()
+        y_hat = self(x).squeeze()    
+        mask = (y != self.mask_value)
+        loss = self._loss(y_hat[mask], y[mask])    
+        metrics = self._accuracy(y_hat[mask], y[mask])
         
+        return y_hat[mask].squeeze().cpu().numpy().flatten(), loss.cpu().item(), metrics[0][1], metrics[1][1]
+    
     def _configure_optimizer(self, optim_config = None):
         
         return torch.optim.Adam(
@@ -720,7 +734,7 @@ class GlycoModel(pl.LightningModule):
             x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()
-        loss = self._loss(y_hat, y)
+        loss = self._loss_test(y_hat, y)
         if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
@@ -743,7 +757,7 @@ class GlycoModel(pl.LightningModule):
             x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        loss = self._loss(y_hat, y)
+        loss = self._loss_test(y_hat, y)
         if len(y_hat.shape) == 1 or y_hat.shape == torch.Size([]):
             y_hat = y_hat.unsqueeze(0)
             y = y.unsqueeze(0)
@@ -766,8 +780,8 @@ class GlycoModel(pl.LightningModule):
             x = x.squeeze(0)
         y = y.squeeze()
         y_hat = self(x).squeeze()        
-        loss = self._loss(y_hat, y)
-        y_hat = y_hat > 0.5 if self.num_classes == 2 else y_hat.argmax(dim=1)
+        loss = self._loss_test(y_hat, y)
+        y_hat = y_hat > 0.5 if self.num_classes == 2 else y_hat.argmax()
         return y_hat.cpu().item(), loss.cpu().item()
     
     def on_test_epoch_end(self):
@@ -802,7 +816,18 @@ class GlycoModel(pl.LightningModule):
         ("ACC", accuracy(y_hat, y, task=task, num_classes=self.num_classes, average="macro")),
         ("F1", f1_score(y_hat, y, task=task, num_classes=self.num_classes, average="macro"))]
         
-
+    def _loss_test(self, y_hat, y):
+        if len(y_hat.shape) != 2:
+            y_hat = y_hat.unsqueeze(0)
+            y = y.unsqueeze(0)
+        if self.loss_fn is not None:
+            return self.loss_fn(y_hat, y)
+        if self.num_classes == 1:
+            return F.mse_loss(y_hat, y)
+        elif self.num_classes == 2:
+            return F.binary_cross_entropy_with_logits(y_hat, y)
+        return F.cross_entropy(y_hat, y)
+        
     def _loss(self, y_hat, y):
         if len(y_hat.shape) != 2:
             y_hat = y_hat.unsqueeze(0)
