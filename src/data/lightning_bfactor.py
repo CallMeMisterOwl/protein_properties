@@ -1,27 +1,29 @@
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
-from sklearn.model_selection import train_test_split
-import torch
-import lightning.pytorch as pl
-from torch.utils.data import DataLoader, random_split, Dataset
+
 import h5py
+import lightning.pytorch as pl
 import numpy as np
+import pandas as pd
+import torch
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
 from .fasta import Fasta
+
 
 @dataclass
 class BFactorDataConfig:
     """
     Data configuration for Bfactor dataset
     """
-    data_dir: str = '../../data/e_prsa/bfactor'
-    embedding_path: str = '../../data/e_prsa/prott5_sasa_bfactor.h5'
-    esm_embedding_path: str = '../../data//e_prsa/esm_sasa_bfactor.h5'
-    np_path: str = '../../data/e_prsa/bfactor/np'
-    num_classes: Literal[1,2,3,10] = 1
+    data_dir: str = 'data/e_prsa/bfactor'
+    embedding_path: str = 'data/e_prsa/prott5_sasa_bfactor.h5'
+    esm_embedding_path: str = 'data//e_prsa/esm_sasa_bfactor.h5'
+    np_path: str = 'data/e_prsa/bfactor/np'
     num_workers: int = 4
 
 
@@ -75,7 +77,6 @@ class BFactorDataset(Dataset):
         self.embedding_path = config.embedding_path
         self.esm_embedding_path = config.esm_embedding_path
         self.np_path = Path(config.np_path)
-        self.num_classes = config.num_classes
 
         self.X = None
         self.y = None
@@ -87,9 +88,9 @@ class BFactorDataset(Dataset):
             raise NotImplementedError("Blind test set not implemented yet!")
         
         try:
-            self.X = np.load(str(self.np_path / f"{self.split}_X_c{self.num_classes}.npy"), allow_pickle=True)
-            self.y = np.load(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), allow_pickle=True)
-            self.pids = np.load(str(self.np_path / f"{self.split}_pids_c{self.num_classes}.npy"), allow_pickle=True)
+            self.X = np.load(str(self.np_path / f"{self.split}_X.npy"), allow_pickle=True)
+            self.y = np.load(str(self.np_path / f"{self.split}_y.npy"), allow_pickle=True)
+            self.pids = np.load(str(self.np_path / f"{self.split}_pids.npy"), allow_pickle=True)
             return
         except:
             print("Creating numpy arrays...")
@@ -99,15 +100,15 @@ class BFactorDataset(Dataset):
         X = []
         y = []
         pids = []
-        for pid in tqdm(set(label_df['PID'])):
+        for pid in tqdm(set(label_df['Protein'])):
             # masking the 0.0 values, so I can remove them later before calculating the loss
-            bfactor = label_df[label_df['PID'] == pid]['norm_Bfactor'].values
+            bfactor = label_df[label_df['Protein'] == pid]['norm_Bfactor'].values
             
             y.append(bfactor.astype(np.float32))
             embedding = None
             with h5py.File(self.embedding_path, "r") as embeddings:
                 try:
-                    embedding = embeddings[pid][()][pos - 1]
+                    embedding = embeddings[pid][()]
                 except KeyError:
                     print(f"Protein {pid} not found in ProtT5 embeddings!")
                     continue
@@ -118,7 +119,7 @@ class BFactorDataset(Dataset):
             with h5py.File(self.esm_embedding_path, "r") as esm_embeddings:
                 
                 try:
-                    embedding = np.concatenate([embedding, esm_embeddings[pid.replace("_", "-")][()][pos - 1]])
+                    embedding = np.concatenate([embedding, esm_embeddings[pid.replace("_", "-")][()]], axis=1)
                 except KeyError:
                     print(f"Protein {pid} not found in ESM embeddings!")
                     continue
@@ -133,9 +134,9 @@ class BFactorDataset(Dataset):
         self.X = np.array(X, dtype=object)
         self.y = np.array(y, dtype=object)
         self.pids = np.array(pids, dtype=object)
-        np.save(str(self.np_path / f"{self.split}_X_c{self.num_classes}.npy"), self.X)
-        np.save(str(self.np_path / f"{self.split}_y_c{self.num_classes}.npy"), self.y)
-        np.save(str(self.np_path / f"{self.split}_pids_c{self.num_classes}.npy"), self.pids)
+        np.save(str(self.np_path / f"{self.split}_X.npy"), self.X)
+        np.save(str(self.np_path / f"{self.split}_y.npy"), self.y)
+        np.save(str(self.np_path / f"{self.split}_pids.npy"), self.pids)
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx], self.pids[idx]
@@ -175,12 +176,14 @@ class BFactorDataModule(pl.LightningDataModule):
         
 
     def setup(self, stage=None):
+        if stage != 'fit':
+            return
         self.prepare_data()
         
         self.train_dataset = BFactorDataset("train", self.config)
         self.val_dataset = BFactorDataset("val", self.config)
 
-        if self.config.num_classes < 3:
+        '''if self.config.num_classes < 3:
             self.train_dataset.y = np.array([arr.astype(np.float16) 
                                              if arr.dtype != np.float16 
                                              else arr 
@@ -188,9 +191,9 @@ class BFactorDataModule(pl.LightningDataModule):
             self.val_dataset.y = np.array([arr.astype(np.float16)
                                            if arr.dtype != np.float16
                                            else arr
-                                           for arr in self.val_dataset.y], dtype=object)
+                                           for arr in self.val_dataset.y], dtype=object)'''
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
+        return DataLoader(self.train_dataset, batch_size=1, shuffle=True, num_workers=self.config.num_workers)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=self.config.num_workers)
