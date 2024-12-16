@@ -30,7 +30,7 @@ X, x_test, Y, y_test = train_test_split( x, y, test_size=0.04, random_state=10)
 x_train, x_valid, y_train, y_valid = train_test_split( X, Y, test_size=0.04, random_state=100)
 
 
-with open("data/pandey_bfactor/rr_train_a_our_test.fasta", "r") as file:
+with open("data/pandey_bfactor/pandey_seqs_finished_RR.fasta", "r") as file:
     ids = [int(line[1:].strip()) for line in file if line.startswith(">")]
 
 #remove ids from train val and test
@@ -38,14 +38,14 @@ train = set(x_train.squeeze().tolist())
 val = set(x_valid.squeeze().tolist())
 test = set(x_test.squeeze().tolist())
 ids = set(ids)
-
+print('Number of train samples before remove:', len(train))
 # retain only the ids that are in ids 
-"""train = train.intersection(ids)
+train = train.intersection(ids)
 
 
 # convert back to numpy array
-x_train = np.array(list(train)).reshape(-1,1)"""
-
+x_train = np.array(list(train)).reshape(-1,1)
+print('Number of train samples after remove:', len(train))
 
 n_samples_train = np.shape(x_train)[0] 
 n_samples_test = np.shape(x_test)[0]
@@ -207,7 +207,7 @@ hidden_size1 = 512
 hidden_size2 = 64
 num_layers = 1
 init_lr = 0.001
-num_epochs = 400
+num_epochs = 98
 seq_len = 500
 
 
@@ -286,7 +286,7 @@ for epoch in range(num_epochs):
   
   if (epoch%1 == 0):
     # print(f'Learning rate in epoch {epoch+1} was', cur_lr)
-    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all_no_rr/epoch_{epoch+1}_no_rr.pth') ##! FIXME -> yeah no shit sherlock 
+    torch.save(model.state_dict(), f'results/pandey_bfactor/35_all/epoch_{epoch+1}_rr.pth') ##! FIXME -> yeah no shit sherlock 
     writer.add_scalar("Loss per epoch/train", avg_loss, epoch)
 
     with torch.no_grad():

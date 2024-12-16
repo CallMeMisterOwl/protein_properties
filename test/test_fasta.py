@@ -23,10 +23,10 @@ class TestFasta(unittest.TestCase):
 
     def test_read_fasta(self):
         fasta = Fasta(sequences=self.fasta_dict)
-        self.assertEqual(fasta._sequences, self.fasta_dict)
+        self.assertEqual(fasta.sequences, self.fasta_dict)
 
         fasta = Fasta(path=self.fasta_path)
-        self.assertEqual(fasta._sequences, self.fasta_dict)
+        self.assertEqual(fasta.sequences, self.fasta_dict)
 
     def test_write_fasta(self):
         fasta = Fasta(sequences=self.fasta_dict)
@@ -49,6 +49,18 @@ class TestFasta(unittest.TestCase):
         # test file exists error
         with self.assertRaises(FileExistsError):
             fasta.write_fasta(path=self.fasta_path)
+
+    def test_write_fasta_with_nones(self):
+        fasta = Fasta(sequences={'header1': [None, None]})
+        fasta.write_fasta(path=self.fasta_path, overwrite=True)
+        with open(self.fasta_path) as f:
+            lines = f.readlines()
+        expected_lines = [
+            ">header1\n",
+            "\n"
+        ]
+        self.assertEqual(lines, expected_lines)
+
 
     def test_get_sequence(self):
         fasta = Fasta(sequences=self.fasta_dict)
@@ -130,13 +142,13 @@ class TestFasta(unittest.TestCase):
         # Test shallow copy
         fasta1 = Fasta(sequences={'header1': [['ATCG'], ['GTAC']]})
         fasta2 = fasta1.__copy__()
-        fasta2._sequences['header1'][0][0] = 'CGAT'
+        fasta2.sequences['header1'][0][0] = 'CGAT'
         self.assertEqual(fasta1.get_sequence('header1'), [['CGAT'], ['GTAC']])
         self.assertEqual(fasta2.get_sequence('header1'), [['CGAT'], ['GTAC']])
 
         # Test deep copy
         fasta3 = deepcopy(fasta1)
-        fasta3._sequences['header1'][0][0] = 'TACG'
+        fasta3.sequences['header1'][0][0] = 'TACG'
         self.assertEqual(fasta1.get_sequence('header1'), [['CGAT'], ['GTAC']])
         self.assertEqual(fasta3.get_sequence('header1'), [['TACG'], ['GTAC']])
 

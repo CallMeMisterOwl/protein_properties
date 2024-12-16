@@ -4,7 +4,7 @@ from pathlib import Path
 
 from torch import nn
 from src.utils import seed_all, kaiming_init
-from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 
 import wandb
 
@@ -14,6 +14,7 @@ class MyLightningCLI(LightningCLI):
         parser.add_argument("--output_path", type=Path)
         parser.add_argument("--HP", type=bool, default=False)
         parser.link_arguments("model.init_args.num_classes", "data.init_args.config.num_classes")
+        parser.add_argument("--ckpt_path", type=Path)
 
 
 def main():
@@ -23,20 +24,9 @@ def main():
         run=False
     )
     cli.config.output_path.mkdir(parents=True, exist_ok=True)
+    model = cli.model.load_from_checkpoint(cli.config.ckpt_path)
+    cli.trainer.test(model, dataloaders=cli.datamodule.test_dataloader())
 
-    cli.trainer.logger = WandbLogger(project="protein_properties", log_model=True)
-    #cli.trainer.logger = TensorBoardLogger(save_dir='tb_bfactor', name="bfactor")
-    cli.model.class_weights = cli.datamodule.class_weights
-    
-    #kaiming_init(cli.model)
-    cli.trainer.fit(model=cli.model, datamodule=cli.datamodule)
-    # get validation scores for the best model
-    
-    if not cli.config.HP:
-        cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
-    else:
-        cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.val_dataloader())
-    
 
 if __name__ == "__main__":
     main()
