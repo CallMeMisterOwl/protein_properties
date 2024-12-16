@@ -178,8 +178,8 @@ def fetch_uniprot_sequences(uniprot_ids):
     return sequences
 
 def fetch_ncbi_sequences(ncbi_ids):
-    Entrez.email = 'd.hasler@campus.lmu.de'  # Set your email address here
-    Entrez.api_key = "d0e67a06b3f5a139e29f787339fae9b3d008"
+    Entrez.email = ''  # Set your email address here
+    Entrez.api_key = ""
     sequences = {}
     
     def fetch_sequence(ncbi_id):
