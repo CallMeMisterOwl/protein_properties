@@ -26,53 +26,6 @@ data/glyco/np/*
 runs/*
 *.npy
 __pycache__
-src/O_glyco_pakhrin/analyze_Cell_Mem_ER_Extrac_Protein (1).py
-src/O_glyco_pakhrin/analyze_Cell_Mem_ER_Extrac_Protein (1).sh
-src/O_glyco_pakhrin/ANN_ESM2_3B_O_linked_glycosylation_Independent_Testing.py
-src/O_glyco_pakhrin/ANN_ESM2_3B_O_linked_glycosylation_Independent_Testing.sh
-src/O_glyco_pakhrin/Compare_with_captor375__1438311___.h5
-src/O_glyco_pakhrin/Compare_with_Sprint_Gly486__103928619___.h5
-src/O_glyco_pakhrin/Comparing with Alkhulani et al. Independent Test Dataset.ipynb
-src/O_glyco_pakhrin/Comparision with SPRINT-Gly.ipynb
-src/O_glyco_pakhrin/Comparison with Captor Independent  O-linked Glycosylation Test Dataset.ipynb
-src/O_glyco_pakhrin/ESM2_3B_10_fold_CV_O_linked_Glycosylation.ipynb
-src/O_glyco_pakhrin/Feature_Extraction_O_linked_Testing_Positive_375_Sites_less.txt
-src/O_glyco_pakhrin/Generate_Contexualized_Embeddings_ProT5.ipynb
-src/O_glyco_pakhrin/O_linked_Glycosylation_ANN_1D_CNN_LR_RF_ROC.png
-src/O_glyco_pakhrin/O-linked Glycosylation ProtT5 Independent Testing with undersampling result.ipynb
-src/O_glyco_pakhrin/OglyPred-PLM overall framework.png
-src/O_glyco_pakhrin/OglyPred-PLM.ipynb
-src/O_glyco_pakhrin/PR_CD_HIT_O_linked_Glycosylation_PR_Curve.png
-src/O_glyco_pakhrin/Prot_T5_my_model_O_linked_Glycosylation370381Prot_T5_Subash_Salman_Neha.h5
-src/O_glyco_pakhrin/Q63HQ2_Prot_Trans_.csv
-src/O_glyco_pakhrin/README.md
-src/O_glyco_pakhrin/requirements.txt
-src/O_glyco_pakhrin/ROC_ANN_1D_CNN_LR_RF_etc_O_linked_Glycosylation.ipynb
-src/O_glyco_pakhrin/Sprint Gly Independent Negative Feature Extraction.ipynb
-src/O_glyco_pakhrin/T-SNE of O-linked Glycosylation.ipynb
-src/O_glyco_pakhrin/TSNE_of_O_linked_Glycosylation_Training_Data_477785 (1).png
-src/O_glyco_pakhrin/TSNE_of_O_linked_Glycosylation_Training_Data_from_Penultimate_layer_of_MLP477785 (1).png
-src/O_glyco_pakhrin/images/Extraction_S_T_Ouput.png
-src/O_glyco_pakhrin/images/ProT5_Output.png
-src/N_glyco_pakhrin/analyze_Cell_Mem_ER_Extrac_Protein.py
-src/N_glyco_pakhrin/analyze_Cell_Mem_ER_Extrac_Protein.sh
-src/N_glyco_pakhrin/df_indepenent_test_again_done_that_has_unique_protein_and_unique_sequence.csv
-src/N_glyco_pakhrin/df_train_data_without_indepenent_test_and_protein.csv
-src/N_glyco_pakhrin/Feature Extraction Program from the generated files.ipynb
-src/N_glyco_pakhrin/Final_GlycoBiology_ANN_Glycobiology_ER_RSA(GA_Extracell_cellmem)187.h5
-src/N_glyco_pakhrin/Glycobiology_NGlyDE_Independent_Positive_202_Negative_100.csv
-src/N_glyco_pakhrin/Glycobiology_NGlyDE_Training_Positive_1821_Negative_901.csv
-src/N_glyco_pakhrin/Independent_Test_Set_Prot_T5_feature_Aug_12.txt
-src/N_glyco_pakhrin/LICENSE
-src/N_glyco_pakhrin/NGlyDE_Prot_T5_Final.h5
-src/N_glyco_pakhrin/README.md
-src/N_glyco_pakhrin/Subash_August_8_2022_NGlyDE_Prot_T5_feature.txt
-src/N_glyco_pakhrin/Test_Data_NGlycositeAtlas.csv
-src/N_glyco_pakhrin/Train_Data_NGlycositeAtlas.csv
-src/N_glyco_pakhrin/Undersampling_Glycobiology_NGLYDE_Final6947757.h5
-src/N_glyco_pakhrin/ipynb files/GlycoBiology_NGlycositeAtlas.ipynb
-src/N_glyco_pakhrin/ipynb files/GlycoBiology_NGlyDE_90__Training_10__Indepedent_Testing.ipynb
-src/N_glyco_pakhrin/ipynb files/GlycoBiology_NGlyDE_Original.ipynb
 results/per_prot_perf_10.tsv
 results/per_prot_perf.tsv
 results/glyco/baseline/GlycoModel_2_test_preds.tsv
