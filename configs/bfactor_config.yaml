@@ -1,0 +1,43 @@
+output_path: results/bfactor/baseline
+HP: True
+model:
+  class_path: src.models.SASACNN
+  init_args:
+    num_classes: 1
+    
+  
+data:
+  class_path: src.data.lightning_bfactor.BFactorDataModule
+  init_args:
+    config:
+      data_dir: data/e_prsa/bfactor
+      embedding_path: data/e_prsa/prott5_sasa_bfactor.h5
+      esm_embedding_path: data/e_prsa/esm_sasa_bfactor.h5
+      np_path: data/e_prsa/bfactor/np
+      num_workers: 8
+      
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  accumulate_grad_batches: 16
+  max_epochs: 50
+  num_sanity_val_steps: 2
+  callbacks:
+    - class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+    - class_path: EarlyStopping
+      init_args:
+        monitor: val_loss
+        mode: min #DEBUG 9999
+        patience: 4 #DEBUG 1
+    - class_path: LearningRateMonitor
+      init_args:
+        logging_interval: step
+    - class_path: src.callbacks.LogPredictionCallback
+      init_args:
+        out_path: results/bfactor/baseline
