@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,7 +11,14 @@ import torch
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset, random_split
+from torch.utils.data import (
+    BatchSampler,
+    ConcatDataset,
+    DataLoader,
+    Dataset,
+    Subset,
+    random_split,
+)
 from tqdm import tqdm
 
 from src.utils import read_vespag
@@ -91,8 +99,7 @@ class GroupedBatchSampler(BatchSampler):
     def __len__(self):
         return len(self.batches)
 
-from torch.utils.data import BatchSampler
-import numpy as np
+
 
 class ImpGroupedBatchSampler(BatchSampler):
     def __init__(
@@ -119,10 +126,8 @@ class ImpGroupedBatchSampler(BatchSampler):
         bin_indices = np.digitize(counts, np.arange(0, counts.max() + self.bin_size, self.bin_size))
         
         # Group protein IDs by bin
-        bin_groups = {}
+        bin_groups = defaultdict(list)
         for bin_idx, pid, count in zip(bin_indices, protein_ids, counts):
-            if bin_idx not in bin_groups:
-                bin_groups[bin_idx] = []
             bin_groups[bin_idx].append((pid, count))
         
         # Shuffle bins if required
