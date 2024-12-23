@@ -7,14 +7,6 @@ src/data/__pycache__
 test/__pycache__
 test.ipynb
 data/*
-data/sasa/sasaembeddings.h5
-data/sasa/*.npy
-data/sasa/*.pt
-data/glyco/*.npy
-data/glyco/*.pt
-data/glyco/glyco_embeddings.h5
-data/glyco/glyco_esm_embeddings.h5
-data/glyco/vespag/*
 logs/*
 wandb/
 protein_properties/
@@ -26,19 +18,7 @@ data/glyco/np/*
 runs/*
 *.npy
 __pycache__
-data/LMNglyPred/df_indepenent_test_again_done_that_has_unique_protein_and_unique_sequence.csv
-data/LMNglyPred/df_train_data_without_indepenent_test_and_protein.csv
-data/OglyPred/Feature_Extraction_O_linked_Testing_Negative_11466_Sites_less.txt
-data/OglyPred/Feature_Extraction_O_linked_Testing_Positive_375_Sites_less.txt
-data/OglyPred/Feature_Extraction_O_linked_Training_Negative_114307_Sites_less.txt
-data/OglyPred/Feature_Extraction_O_linked_Training_Positive_4885_Sites_less.txt
-data/OglyPred/O_linked_test_pids.csv
-data/bfactor/protein_list.txt
-data/glyco/*
 
-data/pandey_bfactor/*
-data/sasa/ss_dis.txt
-data/ss_over_time/*
 
 
 rr/*
