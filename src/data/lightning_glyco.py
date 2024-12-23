@@ -38,6 +38,7 @@ class GlycoDataConfig:
     neg_sample_ratio: float = 1.3
     pos_sample_ratio: float = 1.0
     add_neg_op_sites: bool = False
+    model_type: Literal["FNN", "CNN"] = "FNN"
 
 
 import torch
@@ -307,6 +308,7 @@ class GlycoDataset(Dataset):
         self.add_vespag = config.add_vespag
         self.neg_sample_ratio = config.neg_sample_ratio
         self.pos_sample_ratio = config.pos_sample_ratio
+        self.model_type = config.model_type
         self.config = config
         '''self.add_neg_sites = config.add_neg_sites
         if self.add_neg_sites and self.num_classes < 3 and self.split == "train":
@@ -321,6 +323,60 @@ class GlycoDataset(Dataset):
         self.pids = None
         self.load_data()
 
+    
+    def create_embeddings(self, pids, input_feat_dim, positions):
+        if self.model_type == 'CNN':
+            X = np.zeros((len(pids), 31, input_feat_dim))
+            embedding_dims = (31, input_feat_dim)
+            half_window = 15
+
+        else:
+            X = np.zeros((len(pids), input_feat_dim), dtype=np.float32)
+            embedding_dims = input_feat_dim
+
+        # Perform string replacements once
+        processed_pids = [pid.replace("-", "_").replace(".", "_") for pid in pids]
+
+        for idx, (pid, pos) in enumerate(tqdm(zip(processed_pids, positions), total=len(processed_pids))):
+            input_feature = np.zeros(embedding_dims)
+            with h5py.File(self.embedding_path, "r") as embeddings:
+                try:
+                    if self.model_type == 'CNN':
+                        emb = embeddings[pid][()]
+                        start = max(0, pos - half_window - 1)
+                        end = min(emb.shape[0], pos + half_window)
+                        input_feature[:, 1024] = emb[start:end]
+                    else:
+                        input_feature[:1024] = embeddings[pid][()][pos - 1]
+                except KeyError:
+                    print(f"Protein {pid} not found in ProtT5 embeddings!")
+                    continue
+                except IndexError:
+                    print(f"Position {pos} not found in protein {pid}!")
+                    continue
+                
+            if self.add_esm:
+                with h5py.File(self.esm_embedding_path, "r") as esm_embeddings:
+                    input_pos = 1024 if not self.add_vespag else 1024 + 20
+                    try:
+                        if self.model_type == 'CNN':
+                            emb = esm_embeddings[pid][()]
+                            start = max(0, pos - half_window - 1)
+                            end = min(emb.shape[0], pos + half_window)
+                            input_feature[:, input_pos] = emb[start:end]
+                        else:
+                            input_feature[input_pos:] = esm_embeddings[pid.replace("_", "-")][()][pos - 1]
+                        
+                    except KeyError:
+                        print(f"Protein {pid} not found in ESM embeddings!")
+                        continue
+                    except IndexError:
+                        print(f"Position {pos} not found in protein {pid}!")
+                        continue
+            X[idx] = input_feature
+            
+        return X
+    
     def load_data(self):
         if self.split == "blind_test":
             raise NotImplementedError("Blind test set not implemented yet!")
@@ -469,3 +525,4 @@ class GlycoDataset(Dataset):
 
     def __getitem__(self, index):
         return self.X[index], self.y[index], self.pids[index]
+
