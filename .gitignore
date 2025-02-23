@@ -1,4 +1,5 @@
 .idea/*
+.venv/
 .vscode/*
 stderr.log
 stdout.log
